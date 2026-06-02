@@ -37,26 +37,29 @@ jobs:
       run: |
         docker push ${{ secrets.DOCKER_USERNAME }}/busline-api:latest
 
-    - name: Deploy VPS
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SERVER_SSH_KEY }}
-        script: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/busline-api:latest
+  - name: Deploy VPS
+  uses: appleboy/ssh-action@v1.0.3
+  with:
+    host: ${{ secrets.SERVER_HOST }}
+    username: ${{ secrets.SERVER_USER }}
+    key: ${{ secrets.SERVER_SSH_KEY }}
+    script: |
+      docker pull ${{ secrets.DOCKER_USERNAME }}/busline-api:latest
 
-          docker stop busline-api || true
-          docker rm busline-api || true
+      docker stop busline-api || true
+      docker rm busline-api || true
 
-          docker run -d \
-            --name busline-api \
-            --restart always \
-            -p 8080:8080 \
-            -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-container:5432/busline \
-            -e SPRING_DATASOURCE_USERNAME=postgres \
-            -e SPRING_DATASOURCE_PASSWORD=123456 \
-            ${{ secrets.DOCKER_USERNAME }}/busline-api:latest
+      docker run -d \
+        --name busline-api \
+        --network busline-network \
+        --restart always \
+        -p 8080:8080 \
+        -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-container:5432/busline \
+        -e SPRING_DATASOURCE_USERNAME=postgres \
+        -e SPRING_DATASOURCE_PASSWORD=123456 \
+        ${{ secrets.DOCKER_USERNAME }}/busline-api:latest
+
+           
 
 
             
