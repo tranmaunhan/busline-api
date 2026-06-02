@@ -57,3 +57,6 @@ jobs:
             -e SPRING_DATASOURCE_USERNAME=postgres \
             -e SPRING_DATASOURCE_PASSWORD=123456 \
             ${{ secrets.DOCKER_USERNAME }}/busline-api:latest
+
+
+            
