@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -45,15 +44,16 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             docker pull ${{ secrets.DOCKER_USERNAME }}/busline-api:latest
-            
+
             docker stop busline-api || true
             docker rm busline-api || true
-            
+
             docker run -d \
               --name busline-api \
+              --network busline-network \
               --restart always \
               -p 8080:8080 \
-              -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-container:5432/busline \
-              -e SPRING_DATASOURCE_USERNAME=postgres \
+              -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-container:5433/mydb \
+              -e SPRING_DATASOURCE_USERNAME=admin \
               -e SPRING_DATASOURCE_PASSWORD=123456 \
               ${{ secrets.DOCKER_USERNAME }}/busline-api:latest
