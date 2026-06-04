@@ -74,7 +74,8 @@ public class SecurityConfig {
 
         configuration.setAllowedOrigins(List.of(
                 "https://aihost.io.vn",
-                "https://www.aihost.io.vn"
+                "https://www.aihost.io.vn",
+                "https://api.aihost.io.vn"
         ));
 
         configuration.setAllowedMethods(List.of(
