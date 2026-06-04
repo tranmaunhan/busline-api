@@ -53,7 +53,7 @@ jobs:
               --network busline-network \
               --restart always \
               -p 8080:8080 \
-              -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-container:5432/mydb \
-              -e SPRING_DATASOURCE_USERNAME=admin \
-              -e SPRING_DATASOURCE_PASSWORD=123456 \
+             -e SPRING_DATASOURCE_URL=${{ secrets.DB_URL }} \
+              -e SPRING_DATASOURCE_USERNAME=${{ secrets.DB_USERNAME }} \
+              -e SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }} \
               ${{ secrets.DOCKER_USERNAME }}/busline-api:latest
