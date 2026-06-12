@@ -4,6 +4,14 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Runtime / local test artifacts ###
+*.log
+*.err.log
+*.out.log
+*.class
+Check*.java
+logs/
+
 ### STS ###
 .apt_generated
 .classpath
