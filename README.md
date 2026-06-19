@@ -150,7 +150,7 @@ POST /api/auth/login
 Content-Type: application/json
 
 {
-  "username": "customer01",
+  "email": "customer01@example.com",
   "password": "123456"
 }
 ```

@@ -80,13 +80,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequest request) {
         try {
+            String email = request.email().trim();
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.username(), request.password())
+                    new UsernamePasswordAuthenticationToken(email, request.password())
             );
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             return buildAuthResponse(userDetails);
         } catch (org.springframework.security.core.AuthenticationException ex) {
-            throw new BadCredentialsException("Invalid username or password");
+            throw new BadCredentialsException("Invalid email or password");
         }
     }
 

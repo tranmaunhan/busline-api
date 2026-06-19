@@ -26,31 +26,35 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Tag(name = "Authentication", description = "Đăng kí, đăng nhập và thông tin người dùng")
+@Tag(name = "Authentication", description = "Dang ky, dang nhap va thong tin nguoi dung")
 public class AuthController {
 
     private final AuthService authService;
 
     @PostMapping("/register")
-    @Operation(summary = "Đăng kí tài khoản", description = "Tạo tài khoản mới trả về JWT khi thành công")
-    @ApiResponse(responseCode = "201", description = "Đăng kí thành công")
-    @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ", content = @Content(schema = @Schema()))
+    @Operation(summary = "Dang ky tai khoan", description = "Tao tai khoan moi va tra ve JWT khi thanh cong")
+    @ApiResponse(responseCode = "201", description = "Dang ky thanh cong")
+    @ApiResponse(responseCode = "400", description = "Du lieu khong hop le", content = @Content(schema = @Schema()))
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Đăng nhập", description = "Xác thực username/password và trả về JWT token")
-    @ApiResponse(responseCode = "200", description = "Đăng nhập thành công")
-    @ApiResponse(responseCode = "401", description = "Sai thông tin đăng nhập", content = @Content(schema = @Schema()))
+    @Operation(summary = "Dang nhap", description = "Xac thuc email/password va tra ve JWT token")
+    @ApiResponse(responseCode = "200", description = "Dang nhap thanh cong")
+    @ApiResponse(responseCode = "401", description = "Sai thong tin dang nhap", content = @Content(schema = @Schema()))
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Thông tin tài khoản hiện tại", description = "Lấy thông tin user đang đăng nhập", security = @SecurityRequirement(name = "bearerAuth"))
-    @ApiResponse(responseCode = "200", description = "Lấy thông tin thành công")
-    @ApiResponse(responseCode = "401", description = "Chưa đăng nhập", content = @Content(schema = @Schema()))
+    @Operation(
+            summary = "Thong tin tai khoan hien tai",
+            description = "Lay thong tin user dang dang nhap",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponse(responseCode = "200", description = "Lay thong tin thanh cong")
+    @ApiResponse(responseCode = "401", description = "Chua dang nhap", content = @Content(schema = @Schema()))
     public ResponseEntity<UserProfileResponse> me(@AuthenticationPrincipal CustomUserDetails currentUser) {
         return ResponseEntity.ok(authService.getCurrentUserProfile(currentUser));
     }

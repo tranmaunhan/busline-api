@@ -43,7 +43,7 @@ public class JwtTokenProvider {
                 .toList();
 
         return Jwts.builder()
-                .subject(userDetails.getUsername())
+                .subject(userDetails.getEmail())
                 .claim("roles", roles)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
@@ -51,7 +51,7 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public String getUsernameFromToken(String token) {
+    public String getEmailFromToken(String token) {
         return getClaims(token).getSubject();
     }
 
