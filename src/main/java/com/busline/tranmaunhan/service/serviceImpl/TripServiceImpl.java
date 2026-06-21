@@ -28,6 +28,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -46,13 +47,14 @@ public class TripServiceImpl implements TripService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TripSearchResponse> searchTrips(Integer pickupLocationId, Integer dropoffLocationId, LocalDate departureDate) {
+    public List<TripSearchResponse> searchTrips(Integer pickupLocationId, Integer dropoffLocationId,
+            LocalDate departureDate) {
         if (pickupLocationId.equals(dropoffLocationId)) {
             throw new IllegalArgumentException("Diem don va diem tra khong duoc giong nhau");
         }
 
-        List<TripRepository.TripSearchProjection> trips =
-                tripRepository.findTripsFullRoute(pickupLocationId, dropoffLocationId, departureDate);
+        List<TripRepository.TripSearchProjection> trips = tripRepository.findTripsFullRoute(pickupLocationId,
+                dropoffLocationId, departureDate);
         if (trips.isEmpty()) {
             return List.of();
         }
@@ -65,8 +67,7 @@ public class TripServiceImpl implements TripService {
                         TripRepository.TripRouteProjection::getTripId,
                         TripRepository.TripRouteProjection::getRouteId,
                         (left, right) -> left,
-                        LinkedHashMap::new
-                ));
+                        LinkedHashMap::new));
         Set<Integer> routeIds = routeIdByTripId.values().stream().collect(Collectors.toSet());
         LinkedHashMap<Integer, BigDecimal> priceByRouteId = routeSegmentPriceRepository
                 .findPricesForRoutes(routeIds, pickupLocationId, dropoffLocationId).stream()
@@ -74,8 +75,7 @@ public class TripServiceImpl implements TripService {
                         RouteSegmentPriceRepository.RouteSegmentPriceProjection::getRouteId,
                         RouteSegmentPriceRepository.RouteSegmentPriceProjection::getPrice,
                         (left, right) -> left,
-                        LinkedHashMap::new
-                ));
+                        LinkedHashMap::new));
 
         return trips.stream()
                 .map(trip -> {
@@ -96,8 +96,7 @@ public class TripServiceImpl implements TripService {
                             trip.getRouteDestination(),
                             trip.getLicensePlate(),
                             trip.getVehicleType(),
-                            price
-                    );
+                            price);
                 })
                 .filter(Objects::nonNull)
                 .toList();
@@ -124,8 +123,7 @@ public class TripServiceImpl implements TripService {
                 tripDetails.getTotalDistanceKm(),
                 tripDetails.getTotalDurationMinutes(),
                 readJson(tripDetails.getRouteStops(), ROUTE_STOPS_TYPE, "route_stops"),
-                readJson(tripDetails.getSeatLayout(), SEAT_LAYOUT_TYPE, "seat_layout")
-        );
+                readJson(tripDetails.getSeatLayout(), SEAT_LAYOUT_TYPE, "seat_layout"));
     }
 
     @Override
@@ -143,14 +141,14 @@ public class TripServiceImpl implements TripService {
                         seat.getColIndex(),
                         seat.getDeck(),
                         seat.getSeatType(),
-                        seat.getStatus()
-                ))
+                        seat.getStatus()))
                 .toList();
 
         BigDecimal segmentPrice = null;
         if (pickupLocationId != null || dropoffLocationId != null) {
             if (pickupLocationId == null || dropoffLocationId == null) {
-                throw new IllegalArgumentException("Can truyen day du pickupLocationId va dropoffLocationId de lay gia chang");
+                throw new IllegalArgumentException(
+                        "Can truyen day du pickupLocationId va dropoffLocationId de lay gia chang");
             }
             if (pickupLocationId.equals(dropoffLocationId)) {
                 throw new IllegalArgumentException("Diem don va diem tra khong duoc giong nhau");
@@ -159,8 +157,7 @@ public class TripServiceImpl implements TripService {
             segmentPrice = resolveSegmentPrice(
                     trip.getRoute().getId(),
                     pickupLocationId,
-                    dropoffLocationId
-            );
+                    dropoffLocationId);
         }
 
         return new TripSeatMapResponse(
@@ -178,15 +175,13 @@ public class TripServiceImpl implements TripService {
                 dropoffLocationId,
                 segmentPrice,
                 seats.size(),
-                seats
-        );
+                seats);
     }
 
     private BigDecimal resolveSegmentPrice(Integer routeId, Integer pickupLocationId, Integer dropoffLocationId) {
         return routeSegmentPriceRepository.findPriceByRouteAndLocations(routeId, pickupLocationId, dropoffLocationId)
                 .orElseThrow(() -> new NoSuchElementException(
-                        "Khong tim thay gia ve cho chang da chon tren tuyen id = " + routeId
-                ));
+                        "Khong tim thay gia ve cho chang da chon tren tuyen id = " + routeId));
     }
 
     private <T> T readJson(String json, TypeReference<T> typeReference, String fieldName) {
@@ -201,10 +196,11 @@ public class TripServiceImpl implements TripService {
         }
     }
 
-    private OffsetDateTime toOffsetDateTime(Instant value) {
+    private OffsetDateTime toOffsetDateTime(LocalDateTime value) {
         if (value == null) {
             return null;
         }
+
         return value.atZone(APP_ZONE_ID).toOffsetDateTime();
     }
 }

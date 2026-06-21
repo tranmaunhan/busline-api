@@ -4,7 +4,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.time.Instant;
+// import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -25,8 +27,7 @@ public interface TripRepository extends JpaRepository<com.busline.tranmaunhan.en
     List<TripSearchProjection> findTripsFullRoute(
             @Param("pickupLocationId") Integer pickupLocationId,
             @Param("dropoffLocationId") Integer dropoffLocationId,
-            @Param("departureDate") LocalDate departureDate
-    );
+            @Param("departureDate") LocalDate departureDate);
 
     @Query(value = """
             SELECT
@@ -61,7 +62,7 @@ public interface TripRepository extends JpaRepository<com.busline.tranmaunhan.en
     interface TripSearchProjection {
         Integer getTripId();
 
-        Instant getDepartureTime();
+        LocalDateTime getDepartureTime();
 
         String getRouteOrigin();
 
@@ -81,7 +82,7 @@ public interface TripRepository extends JpaRepository<com.busline.tranmaunhan.en
     interface TripDetailsProjection {
         Integer getTripId();
 
-        Instant getDepartureTime();
+        LocalDateTime getDepartureTime();
 
         Integer getTripStatus();
 
