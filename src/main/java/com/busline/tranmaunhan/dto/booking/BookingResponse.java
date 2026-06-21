@@ -12,19 +12,18 @@ import java.util.List;
 public class BookingResponse {
 
     private Integer bookingId;
+    private String bookingCode;
+
     private LocalDateTime bookingTime;
     private Integer status;
     private BigDecimal totalAmount;
 
-    // Trip info
     private Integer tripId;
     private LocalDateTime tripDepartureTime;
 
-    // Route info
     private String routeOrigin;
     private String routeDestination;
 
-    // Pickup / Dropoff
     private String pickupLocationName;
     private String dropoffLocationName;
 

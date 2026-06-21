@@ -33,6 +33,9 @@ public class Bookings {
     @Column(name = "TotalAmount")
     private BigDecimal totalAmount;
 
+    @Column(name = "BookingCode")
+    private String bookingCode;
+
     @OneToMany(mappedBy = "booking")
     private List<Tickets> tickets;
 }
