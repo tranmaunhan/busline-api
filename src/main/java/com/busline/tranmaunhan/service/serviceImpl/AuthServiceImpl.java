@@ -45,7 +45,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (usersRepository.existsByEmailIgnoreCase(request.email())) {
-            throw new IllegalArgumentException("Email already exists");
+            throw new IllegalArgumentException("Email đã tồn tại");
         }
 
         Users user = new Users();
