@@ -1,11 +1,11 @@
 package com.busline.tranmaunhan.dto.trip;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 public record TripSearchResponse(
         Integer tripId,
-        LocalDateTime departureTime,
+        OffsetDateTime departureTime,
         String routeOrigin,
         String routeDestination,
         String licensePlate,
