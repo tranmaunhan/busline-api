@@ -49,7 +49,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         Users user = new Users();
-      
+
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setFullName(request.fullName().trim());
         user.setEmail(request.email().trim());
@@ -79,12 +79,11 @@ public class AuthServiceImpl implements AuthService {
         try {
             String email = request.email().trim();
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, request.password())
-            );
+                    new UsernamePasswordAuthenticationToken(email, request.password()));
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             return buildAuthResponse(userDetails);
         } catch (org.springframework.security.core.AuthenticationException ex) {
-            throw new BadCredentialsException("Invalid email or password");
+            throw new BadCredentialsException("Email hoặc mật khẩu không hợp lệ");
         }
     }
 
@@ -99,8 +98,7 @@ public class AuthServiceImpl implements AuthService {
                 token,
                 "Bearer",
                 jwtTokenProvider.getJwtExpirationMs(),
-                toUserProfile(userDetails)
-        );
+                toUserProfile(userDetails));
     }
 
     private UserProfileResponse toUserProfile(CustomUserDetails userDetails) {
@@ -114,7 +112,6 @@ public class AuthServiceImpl implements AuthService {
                 userDetails.getEmail(),
                 userDetails.getPhone(),
                 userDetails.getStatus(),
-                roles
-        );
+                roles);
     }
 }
