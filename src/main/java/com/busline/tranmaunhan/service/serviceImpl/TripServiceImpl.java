@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
@@ -90,7 +92,7 @@ public class TripServiceImpl implements TripService {
 
                     return new TripSearchResponse(
                             trip.getTripId(),
-                            trip.getDepartureTime(),
+                            toLocalDateTime(trip.getDepartureTime()),
                             trip.getRouteOrigin(),
                             trip.getRouteDestination(),
                             trip.getLicensePlate(),
@@ -200,10 +202,17 @@ public class TripServiceImpl implements TripService {
         }
     }
 
-    private OffsetDateTime toOffsetDateTime(java.time.Instant value) {
+    private OffsetDateTime toOffsetDateTime(Instant value) {
         if (value == null) {
             return null;
         }
         return value.atZone(APP_ZONE_ID).toOffsetDateTime();
+    }
+
+    private LocalDateTime toLocalDateTime(Instant value) {
+        if (value == null) {
+            return null;
+        }
+        return value.atZone(APP_ZONE_ID).toLocalDateTime();
     }
 }

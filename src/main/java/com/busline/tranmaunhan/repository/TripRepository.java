@@ -6,7 +6,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -62,7 +61,7 @@ public interface TripRepository extends JpaRepository<com.busline.tranmaunhan.en
     interface TripSearchProjection {
         Integer getTripId();
 
-        LocalDateTime getDepartureTime();
+        Instant getDepartureTime();
 
         String getRouteOrigin();
 
