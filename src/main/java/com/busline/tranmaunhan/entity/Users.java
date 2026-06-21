@@ -19,9 +19,6 @@ public class Users {
     @Column(name = "Id")
     private Integer id;
 
-    @Column(name = "Username")
-    private String username;
-
     @Column(name = "PasswordHash")
     private String passwordHash;
 

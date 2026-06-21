@@ -44,15 +44,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (usersRepository.existsByUsernameIgnoreCase(request.username())) {
-            throw new IllegalArgumentException("Username already exists");
-        }
         if (usersRepository.existsByEmailIgnoreCase(request.email())) {
             throw new IllegalArgumentException("Email already exists");
         }
 
         Users user = new Users();
-        user.setUsername(request.username().trim());
+      
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setFullName(request.fullName().trim());
         user.setEmail(request.email().trim());
@@ -113,7 +110,6 @@ public class AuthServiceImpl implements AuthService {
 
         return new UserProfileResponse(
                 userDetails.getId(),
-                userDetails.getUsername(),
                 userDetails.getFullName(),
                 userDetails.getEmail(),
                 userDetails.getPhone(),

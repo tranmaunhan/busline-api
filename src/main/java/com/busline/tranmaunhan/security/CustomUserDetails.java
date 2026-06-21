@@ -13,7 +13,6 @@ import java.util.List;
 public class CustomUserDetails implements UserDetails {
 
     private final Integer id;
-    private final String username;
     private final String password;
     private final String fullName;
     private final String email;
@@ -23,7 +22,7 @@ public class CustomUserDetails implements UserDetails {
 
     public CustomUserDetails(Users user) {
         this.id = user.getId();
-        this.username = user.getUsername();
+
         this.password = user.getPasswordHash();
         this.fullName = user.getFullName();
         this.email = user.getEmail();
@@ -32,9 +31,10 @@ public class CustomUserDetails implements UserDetails {
         this.authorities = user.getUserRoles() == null
                 ? List.of()
                 : user.getUserRoles().stream()
-                .map(userRole -> new SimpleGrantedAuthority("ROLE_" + userRole.getRole().getRoleName().toUpperCase()))
-                .map(GrantedAuthority.class::cast)
-                .toList();
+                        .map(userRole -> new SimpleGrantedAuthority(
+                                "ROLE_" + userRole.getRole().getRoleName().toUpperCase()))
+                        .map(GrantedAuthority.class::cast)
+                        .toList();
     }
 
     @Override
@@ -49,7 +49,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return username;
+        return email;
     }
 
     @Override
