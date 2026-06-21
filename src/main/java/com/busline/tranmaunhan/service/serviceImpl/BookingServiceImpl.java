@@ -23,11 +23,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -131,7 +135,7 @@ public class BookingServiceImpl implements BookingService {
                 // ── 7. Tạo Booking ───────────────────────────────────────────────────
                 Bookings booking = new Bookings();
                 booking.setUser(user);
-                booking.setBookingTime(LocalDateTime.now());
+                booking.setBookingTime(LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")));
                 booking.setStatus(0);
                 booking.setTotalAmount(totalAmount);
 
@@ -183,7 +187,9 @@ public class BookingServiceImpl implements BookingService {
                 return new BookingResponse(
                                 savedBooking.getId(),
                                 savedBooking.getBookingCode(),
+
                                 savedBooking.getBookingTime(),
+
                                 savedBooking.getStatus(),
                                 savedBooking.getTotalAmount(),
                                 trip.getId(),
