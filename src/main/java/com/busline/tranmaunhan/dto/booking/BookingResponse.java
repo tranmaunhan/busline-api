@@ -28,4 +28,5 @@ public class BookingResponse {
     private String dropoffLocationName;
 
     private List<TicketResponse> tickets;
+
 }

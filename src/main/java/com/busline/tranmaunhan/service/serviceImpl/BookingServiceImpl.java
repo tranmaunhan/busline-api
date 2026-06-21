@@ -196,6 +196,6 @@ public class BookingServiceImpl implements BookingService {
         }
 
         private String generateBookingCode(Integer bookingId) {
-                return "SAIGONST-BK" + Integer.toString(bookingId, 36).toUpperCase();
+                return "SAIGONSTBK" + Integer.toString(bookingId, 36).toUpperCase();
         }
 }
