@@ -170,6 +170,18 @@ public class BookingServiceImpl implements BookingService {
         return toBookingResponse(booking);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<BookingResponse> getBookingsByUserId(Integer userId) {
+        if (!usersRepository.existsById(userId)) {
+            throw new NoSuchElementException("Khong tim thay thong tin nguoi dung");
+        }
+
+        return bookingRepository.findByUserIdWithDetails(userId).stream()
+                .map(this::toBookingResponse)
+                .toList();
+    }
+
     private BookingResponse toBookingResponse(Bookings booking) {
         if (booking.getTickets() == null || booking.getTickets().isEmpty()) {
             throw new IllegalStateException("Booking khong co ticket de tra cuu");

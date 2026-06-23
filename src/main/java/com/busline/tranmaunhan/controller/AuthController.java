@@ -1,7 +1,9 @@
 package com.busline.tranmaunhan.controller;
 
 import com.busline.tranmaunhan.dto.auth.AuthResponse;
+import com.busline.tranmaunhan.dto.auth.ChangePasswordRequest;
 import com.busline.tranmaunhan.dto.auth.LoginRequest;
+import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.auth.RegisterRequest;
 import com.busline.tranmaunhan.dto.auth.UserProfileResponse;
 import com.busline.tranmaunhan.security.CustomUserDetails;
@@ -57,5 +59,21 @@ public class AuthController {
     @ApiResponse(responseCode = "401", description = "Chua dang nhap", content = @Content(schema = @Schema()))
     public ResponseEntity<UserProfileResponse> me(@AuthenticationPrincipal CustomUserDetails currentUser) {
         return ResponseEntity.ok(authService.getCurrentUserProfile(currentUser));
+    }
+
+    @PostMapping("/change-password")
+    @Operation(
+            summary = "Doi mat khau",
+            description = "Cho phep user dang dang nhap thay doi mat khau cua minh",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponse(responseCode = "200", description = "Doi mat khau thanh cong")
+    @ApiResponse(responseCode = "400", description = "Du lieu khong hop le hoac mat khau hien tai sai",
+            content = @Content(schema = @Schema()))
+    @ApiResponse(responseCode = "401", description = "Chua dang nhap", content = @Content(schema = @Schema()))
+    public ResponseEntity<MessageResponse> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        return ResponseEntity.ok(authService.changePassword(request, currentUser.getId()));
     }
 }

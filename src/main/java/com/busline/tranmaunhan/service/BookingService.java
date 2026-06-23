@@ -3,6 +3,8 @@ package com.busline.tranmaunhan.service;
 import com.busline.tranmaunhan.dto.booking.BookingResponse;
 import com.busline.tranmaunhan.dto.booking.CreateBookingRequest;
 
+import java.util.List;
+
 public interface BookingService {
 
     /**
@@ -22,4 +24,6 @@ public interface BookingService {
      * @return BookingResponse chua thong tin ve da dat
      */
     BookingResponse getBookingByCodeAndPhone(String bookingCode, String phone);
+
+    List<BookingResponse> getBookingsByUserId(Integer userId);
 }

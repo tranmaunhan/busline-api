@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/bookings")
 @RequiredArgsConstructor
@@ -74,5 +76,20 @@ public class BookingController {
 
         BookingResponse response = bookingService.getBookingByCodeAndPhone(bookingCode, phone);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me")
+    @Operation(
+            summary = "Danh sach booking cua toi",
+            description = "Lay lai tat ca booking user dang dang nhap da dat",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponse(responseCode = "200", description = "Lay danh sach booking thanh cong")
+    @ApiResponse(responseCode = "401", description = "Chua dang nhap",
+            content = @Content(schema = @Schema()))
+    public ResponseEntity<List<BookingResponse>> getMyBookings(
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+
+        return ResponseEntity.ok(bookingService.getBookingsByUserId(currentUser.getId()));
     }
 }

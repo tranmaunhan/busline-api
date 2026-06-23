@@ -1,7 +1,9 @@
 package com.busline.tranmaunhan.service.serviceImpl;
 
 import com.busline.tranmaunhan.dto.auth.AuthResponse;
+import com.busline.tranmaunhan.dto.auth.ChangePasswordRequest;
 import com.busline.tranmaunhan.dto.auth.LoginRequest;
+import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.auth.RegisterRequest;
 import com.busline.tranmaunhan.dto.auth.UserProfileResponse;
 import com.busline.tranmaunhan.entity.Roles;
@@ -26,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor
@@ -91,6 +94,35 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserProfileResponse getCurrentUserProfile(CustomUserDetails currentUser) {
         return toUserProfile(currentUser);
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse changePassword(ChangePasswordRequest request, Integer userId) {
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("Khong tim thay thong tin nguoi dung"));
+
+        String currentPassword = request.currentPassword();
+        String newPassword = request.newPassword();
+        String confirmNewPassword = request.confirmNewPassword();
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Mat khau hien tai khong dung");
+        }
+
+        if (!newPassword.equals(confirmNewPassword)) {
+            throw new IllegalArgumentException("Xac nhan mat khau moi khong khop");
+        }
+
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Mat khau moi khong duoc giong mat khau hien tai");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setUpdatedAt(OffsetDateTime.now());
+        usersRepository.save(user);
+
+        return new MessageResponse("Doi mat khau thanh cong");
     }
 
     private AuthResponse buildAuthResponse(CustomUserDetails userDetails) {
