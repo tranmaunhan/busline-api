@@ -15,8 +15,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -54,5 +56,23 @@ public class BookingController {
 
         BookingResponse response = bookingService.createBooking(request, currentUser.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/lookup")
+    @Operation(
+            summary = "Tra cuu ve da dat",
+            description = "Tra cuu thong tin booking bang ma dat ve va so dien thoai cua nguoi dung."
+    )
+    @ApiResponse(responseCode = "200", description = "Tra cuu booking thanh cong")
+    @ApiResponse(responseCode = "400", description = "bookingCode hoac phone khong hop le",
+            content = @Content(schema = @Schema()))
+    @ApiResponse(responseCode = "404", description = "Khong tim thay booking phu hop",
+            content = @Content(schema = @Schema()))
+    public ResponseEntity<BookingResponse> lookupBooking(
+            @RequestParam String bookingCode,
+            @RequestParam String phone) {
+
+        BookingResponse response = bookingService.getBookingByCodeAndPhone(bookingCode, phone);
+        return ResponseEntity.ok(response);
     }
 }

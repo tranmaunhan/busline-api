@@ -13,4 +13,13 @@ public interface BookingService {
      * @return BookingResponse chứa chi tiết booking vừa tạo
      */
     BookingResponse createBooking(CreateBookingRequest request, Integer userId);
+
+    /**
+     * Tra cuu booking theo ma dat ve va so dien thoai cua nguoi dung.
+     *
+     * @param bookingCode ma dat ve
+     * @param phone so dien thoai da dung khi dang ky/dat ve
+     * @return BookingResponse chua thong tin ve da dat
+     */
+    BookingResponse getBookingByCodeAndPhone(String bookingCode, String phone);
 }
