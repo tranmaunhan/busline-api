@@ -3,7 +3,7 @@ package com.busline.tranmaunhan.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Entity
@@ -35,10 +35,10 @@ public class Users {
     private String status;
 
     @Column(name = "CreatedAt")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @Column(name = "UpdatedAt")
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     @OneToMany(mappedBy = "user")
     private List<Bookings> bookings;

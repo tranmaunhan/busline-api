@@ -18,23 +18,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class TripServiceImpl implements TripService {
 
-    private static final ZoneId APP_ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final TypeReference<List<String>> ROUTE_STOPS_TYPE = new TypeReference<>() {
     };
     private static final TypeReference<List<TripDetailSeatLayoutItemResponse>> SEAT_LAYOUT_TYPE = new TypeReference<>() {
@@ -91,7 +86,7 @@ public class TripServiceImpl implements TripService {
 
                     return new TripSearchResponse(
                             trip.getTripId(),
-                            toOffsetDateTime(trip.getDepartureTime()),
+                            trip.getDepartureTime(),
                             trip.getRouteOrigin(),
                             trip.getRouteDestination(),
                             trip.getLicensePlate(),
@@ -110,7 +105,7 @@ public class TripServiceImpl implements TripService {
 
         return new TripDetailsResponse(
                 tripDetails.getTripId(),
-                toOffsetDateTime(tripDetails.getDepartureTime()),
+                tripDetails.getDepartureTime(),
                 tripDetails.getTripStatus(),
                 tripDetails.getVehicleId(),
                 tripDetails.getLicensePlate(),
@@ -194,13 +189,5 @@ public class TripServiceImpl implements TripService {
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Khong the doc du lieu " + fieldName + " tu database", ex);
         }
-    }
-
-    private OffsetDateTime toOffsetDateTime(LocalDateTime value) {
-        if (value == null) {
-            return null;
-        }
-
-        return value.atZone(APP_ZONE_ID).toOffsetDateTime();
     }
 }

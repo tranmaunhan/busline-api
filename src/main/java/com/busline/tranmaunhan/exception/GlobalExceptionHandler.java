@@ -12,7 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -103,7 +103,7 @@ public class GlobalExceptionHandler {
             Map<String, String> validationErrors
     ) {
         ApiErrorResponse errorResponse = new ApiErrorResponse(
-                LocalDateTime.now(),
+                OffsetDateTime.now(),
                 status.value(),
                 status.getReasonPhrase(),
                 message,

@@ -24,7 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Service
@@ -55,8 +55,9 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(request.email().trim());
         user.setPhone(request.phone().trim());
         user.setStatus("ACTIVE");
-        user.setCreatedAt(LocalDateTime.now());
-        user.setUpdatedAt(LocalDateTime.now());
+        OffsetDateTime now = OffsetDateTime.now();
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
 
         Users savedUser = usersRepository.save(user);
 

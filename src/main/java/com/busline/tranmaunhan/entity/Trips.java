@@ -14,7 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Entity
@@ -39,7 +39,7 @@ public class Trips {
     private Vehicles vehicle;
 
     @Column(name = "DepartureTime")
-    private LocalDateTime departureTime;
+    private OffsetDateTime departureTime;
 
     @Column(name = "Status")
     private String status;

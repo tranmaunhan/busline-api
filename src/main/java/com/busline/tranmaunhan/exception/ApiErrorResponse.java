@@ -1,10 +1,10 @@
 package com.busline.tranmaunhan.exception;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Map;
 
 public record ApiErrorResponse(
-        LocalDateTime timestamp,
+        OffsetDateTime timestamp,
         int status,
         String error,
         String message,

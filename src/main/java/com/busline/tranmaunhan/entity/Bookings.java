@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Entity
@@ -25,7 +25,7 @@ public class Bookings {
     private Users user;
 
     @Column(name = "BookingTime")
-    private LocalDateTime bookingTime;
+    private OffsetDateTime bookingTime;
 
     @Column(name = "Status")
     private Integer status;

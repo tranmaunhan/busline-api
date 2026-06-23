@@ -22,8 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -126,7 +125,7 @@ public class BookingServiceImpl implements BookingService {
 
         Bookings booking = new Bookings();
         booking.setUser(user);
-        booking.setBookingTime(LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")));
+        booking.setBookingTime(OffsetDateTime.now());
         booking.setStatus(0);
         booking.setTotalAmount(totalAmount);
 

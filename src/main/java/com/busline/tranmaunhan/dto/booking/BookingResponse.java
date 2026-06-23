@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Getter
@@ -14,12 +14,12 @@ public class BookingResponse {
     private Integer bookingId;
     private String bookingCode;
 
-    private LocalDateTime bookingTime;
+    private OffsetDateTime bookingTime;
     private Integer status;
     private BigDecimal totalAmount;
 
     private Integer tripId;
-    private LocalDateTime tripDepartureTime;
+    private OffsetDateTime tripDepartureTime;
 
     private String routeOrigin;
     private String routeDestination;
