@@ -56,5 +56,8 @@ jobs:
               -e SPRING_DATASOURCE_URL=${{ secrets.DB_URL }} \
               -e SPRING_DATASOURCE_USERNAME=${{ secrets.DB_USERNAME }} \
               -e SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
+              -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              -e GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}" \
               -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
               ${{ secrets.DOCKER_USERNAME }}/busline-api:latest
