@@ -80,7 +80,6 @@ class BookingServiceImplTest {
         assertEquals("Huy booking thanh cong", response.message());
         assertEquals(0, seat.getStatus());
         verify(tripSeatRepository).saveAll(List.of(seat));
-        verify(ticketRepository).deleteAllInBatch(booking.getTickets());
         verify(bookingRepository).delete(booking);
     }
 
@@ -99,7 +98,6 @@ class BookingServiceImplTest {
         );
 
         assertEquals("Booking da thanh toan, khong the huy", exception.getMessage());
-        verify(ticketRepository, never()).deleteAllInBatch(any());
         verify(bookingRepository, never()).delete(any());
     }
 
@@ -109,6 +107,5 @@ class BookingServiceImplTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(NoSuchElementException.class, () -> bookingService.cancelPendingBooking(1, 99));
-        verify(ticketRepository, never()).deleteAllInBatch(any());
     }
 }

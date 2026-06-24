@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -36,6 +37,11 @@ public class Bookings {
     @Column(name = "BookingCode")
     private String bookingCode;
 
-    @OneToMany(mappedBy = "booking")
-    private List<Tickets> tickets;
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Tickets> tickets = new ArrayList<>();
+
+    public void addTicket(Tickets ticket) {
+        tickets.add(ticket);
+        ticket.setBooking(this);
+    }
 }

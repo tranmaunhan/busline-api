@@ -26,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -141,23 +140,20 @@ public class BookingServiceImpl implements BookingService {
         savedBooking.setBookingCode(bookingCode);
         savedBooking = bookingRepository.saveAndFlush(savedBooking);
 
-        List<Tickets> tickets = new ArrayList<>();
         for (TripSeats seat : seats) {
             Tickets ticket = new Tickets();
-            ticket.setBooking(savedBooking);
             ticket.setTrip(trip);
             ticket.setTripSeat(seat);
             ticket.setPickupStop(pickupStop);
             ticket.setDropoffStop(dropoffStop);
             ticket.setPrice(pricePerSeat);
-            tickets.add(ticket);
+            savedBooking.addTicket(ticket);
 
             seat.setStatus(SEAT_STATUS_LOCKED);
         }
 
-        List<Tickets> savedTickets = ticketRepository.saveAll(tickets);
+        savedBooking = bookingRepository.saveAndFlush(savedBooking);
         tripSeatRepository.saveAll(seats);
-        savedBooking.setTickets(savedTickets);
 
         BookingResponse response = bookingResponseMapper.toBookingResponse(savedBooking);
         bookingNotificationService.sendBookingPendingNotification(user, response);
@@ -240,7 +236,6 @@ public class BookingServiceImpl implements BookingService {
             tripSeatRepository.saveAll(seatsToRelease);
         }
 
-        ticketRepository.deleteAllInBatch(booking.getTickets());
         bookingRepository.delete(booking);
 
         return new MessageResponse("Huy booking thanh cong");
