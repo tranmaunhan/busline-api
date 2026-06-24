@@ -50,6 +50,8 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 "/api/auth/login",
+                                "/api/auth/google",
+                                "/api/auth/google/config",
                                 "/api/auth/register",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",

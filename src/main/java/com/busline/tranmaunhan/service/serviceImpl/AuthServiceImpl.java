@@ -1,7 +1,10 @@
 package com.busline.tranmaunhan.service.serviceImpl;
 
+import com.busline.tranmaunhan.config.GoogleOAuthProperties;
 import com.busline.tranmaunhan.dto.auth.AuthResponse;
 import com.busline.tranmaunhan.dto.auth.ChangePasswordRequest;
+import com.busline.tranmaunhan.dto.auth.GoogleAuthConfigResponse;
+import com.busline.tranmaunhan.dto.auth.GoogleAuthRequest;
 import com.busline.tranmaunhan.dto.auth.LoginRequest;
 import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.auth.RegisterRequest;
@@ -16,8 +19,11 @@ import com.busline.tranmaunhan.repository.UsersRepository;
 import com.busline.tranmaunhan.security.CustomUserDetails;
 import com.busline.tranmaunhan.security.JwtTokenProvider;
 import com.busline.tranmaunhan.service.AuthService;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,10 +31,15 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +51,9 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
+    private final GoogleOAuthProperties googleOAuthProperties;
+
+    private final RestClient restClient = RestClient.builder().build();
 
     @Value("${app.security.default-role}")
     private String defaultRole;
@@ -92,6 +106,39 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public GoogleAuthConfigResponse getGoogleAuthConfig() {
+        if (!googleOAuthProperties.isEnabled()) {
+            return new GoogleAuthConfigResponse(false, null, null);
+        }
+
+        return new GoogleAuthConfigResponse(
+                true,
+                googleOAuthProperties.getClientId().trim(),
+                googleOAuthProperties.getRedirectUri().trim());
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse loginWithGoogle(GoogleAuthRequest request) {
+        validateGoogleConfiguration();
+
+        GoogleTokenResponse tokenResponse = exchangeGoogleCodeForToken(request.code().trim());
+        GoogleUserInfoResponse googleUser = fetchGoogleUserInfo(tokenResponse.accessToken());
+
+        if (!Boolean.TRUE.equals(googleUser.emailVerified())) {
+            throw new IllegalArgumentException("Tai khoan Google chua xac minh email");
+        }
+
+        String email = normalizeRequiredValue(googleUser.email(), "Khong lay duoc email tu Google");
+        Users user = usersRepository.findByEmailIgnoreCase(email)
+                .orElseGet(() -> createGoogleUser(email, googleUser.name()));
+
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+        validateUserStatus(userDetails);
+        return buildAuthResponse(userDetails);
+    }
+
+    @Override
     public UserProfileResponse getCurrentUserProfile(CustomUserDetails currentUser) {
         return toUserProfile(currentUser);
     }
@@ -125,6 +172,110 @@ public class AuthServiceImpl implements AuthService {
         return new MessageResponse("Doi mat khau thanh cong");
     }
 
+    private GoogleTokenResponse exchangeGoogleCodeForToken(String code) {
+        LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+        formData.add("code", code);
+        formData.add("client_id", googleOAuthProperties.getClientId().trim());
+        formData.add("client_secret", googleOAuthProperties.getClientSecret().trim());
+        formData.add("redirect_uri", googleOAuthProperties.getRedirectUri().trim());
+        formData.add("grant_type", "authorization_code");
+
+        try {
+            GoogleTokenResponse response = restClient.post()
+                    .uri("https://oauth2.googleapis.com/token")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(formData)
+                    .retrieve()
+                    .body(GoogleTokenResponse.class);
+
+            if (response == null || !StringUtils.hasText(response.accessToken())) {
+                throw new IllegalArgumentException("Google khong tra ve access token hop le");
+            }
+
+            return response;
+        } catch (RestClientException ex) {
+            throw new IllegalArgumentException("Khong the xac thuc voi Google. Vui long thu lai.");
+        }
+    }
+
+    private GoogleUserInfoResponse fetchGoogleUserInfo(String accessToken) {
+        try {
+            GoogleUserInfoResponse response = restClient.get()
+                    .uri("https://openidconnect.googleapis.com/v1/userinfo")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .retrieve()
+                    .body(GoogleUserInfoResponse.class);
+
+            if (response == null) {
+                throw new IllegalArgumentException("Khong lay duoc thong tin tai khoan Google");
+            }
+
+            return response;
+        } catch (RestClientException ex) {
+            throw new IllegalArgumentException("Khong lay duoc thong tin tai khoan Google");
+        }
+    }
+
+    private Users createGoogleUser(String email, String googleName) {
+        Users user = new Users();
+        user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+        user.setFullName(resolveFullName(email, googleName));
+        user.setEmail(email.trim());
+        user.setPhone("");
+        user.setStatus("ACTIVE");
+        OffsetDateTime now = OffsetDateTime.now();
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
+
+        Users savedUser = usersRepository.save(user);
+        UserRoles userRole = createDefaultRoleForUser(savedUser);
+        savedUser.setUserRoles(List.of(userRole));
+        return savedUser;
+    }
+
+    private UserRoles createDefaultRoleForUser(Users user) {
+        Roles role = rolesRepository.findByRoleNameIgnoreCase(defaultRole)
+                .orElseThrow(() -> new IllegalStateException("Default role not found: " + defaultRole));
+
+        UserRoles userRole = new UserRoles();
+        userRole.setId(new UserRolesId(user.getId(), role.getId()));
+        userRole.setUser(user);
+        userRole.setRole(role);
+        return userRolesRepository.save(userRole);
+    }
+
+    private String resolveFullName(String email, String googleName) {
+        if (StringUtils.hasText(googleName)) {
+            return googleName.trim();
+        }
+
+        int atIndex = email.indexOf('@');
+        return atIndex > 0 ? email.substring(0, atIndex) : email;
+    }
+
+    private String normalizeRequiredValue(String value, String message) {
+        if (!StringUtils.hasText(value)) {
+            throw new IllegalArgumentException(message);
+        }
+        return value.trim();
+    }
+
+    private void validateGoogleConfiguration() {
+        if (!googleOAuthProperties.isEnabled()) {
+            throw new IllegalArgumentException("Dang nhap Google chua duoc cau hinh tren he thong");
+        }
+    }
+
+    private void validateUserStatus(CustomUserDetails userDetails) {
+        if (!userDetails.isAccountNonLocked()) {
+            throw new IllegalArgumentException("Tai khoan da bi khoa");
+        }
+
+        if (!userDetails.isEnabled()) {
+            throw new IllegalArgumentException("Tai khoan hien dang khong hoat dong");
+        }
+    }
+
     private AuthResponse buildAuthResponse(CustomUserDetails userDetails) {
         String token = jwtTokenProvider.generateToken(userDetails);
         return new AuthResponse(
@@ -146,5 +297,17 @@ public class AuthServiceImpl implements AuthService {
                 userDetails.getPhone(),
                 userDetails.getStatus(),
                 roles);
+    }
+
+    private record GoogleTokenResponse(
+            @JsonProperty("access_token") String accessToken
+    ) {
+    }
+
+    private record GoogleUserInfoResponse(
+            String email,
+            String name,
+            @JsonProperty("email_verified") Boolean emailVerified
+    ) {
     }
 }

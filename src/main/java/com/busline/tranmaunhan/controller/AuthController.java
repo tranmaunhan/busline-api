@@ -2,6 +2,8 @@ package com.busline.tranmaunhan.controller;
 
 import com.busline.tranmaunhan.dto.auth.AuthResponse;
 import com.busline.tranmaunhan.dto.auth.ChangePasswordRequest;
+import com.busline.tranmaunhan.dto.auth.GoogleAuthConfigResponse;
+import com.busline.tranmaunhan.dto.auth.GoogleAuthRequest;
 import com.busline.tranmaunhan.dto.auth.LoginRequest;
 import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.auth.RegisterRequest;
@@ -47,6 +49,21 @@ public class AuthController {
     @ApiResponse(responseCode = "401", description = "Sai thong tin dang nhap", content = @Content(schema = @Schema()))
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @GetMapping("/google/config")
+    @Operation(summary = "Lay cau hinh dang nhap Google", description = "Tra ve clientId va redirectUri cong khai de frontend khoi tao popup Google")
+    @ApiResponse(responseCode = "200", description = "Lay cau hinh thanh cong")
+    public ResponseEntity<GoogleAuthConfigResponse> googleConfig() {
+        return ResponseEntity.ok(authService.getGoogleAuthConfig());
+    }
+
+    @PostMapping("/google")
+    @Operation(summary = "Dang nhap bang Google", description = "Nhan authorization code tu Google, tao hoac dang nhap user va tra ve JWT token")
+    @ApiResponse(responseCode = "200", description = "Dang nhap Google thanh cong")
+    @ApiResponse(responseCode = "400", description = "Google login khong hop le", content = @Content(schema = @Schema()))
+    public ResponseEntity<AuthResponse> loginWithGoogle(@Valid @RequestBody GoogleAuthRequest request) {
+        return ResponseEntity.ok(authService.loginWithGoogle(request));
     }
 
     @GetMapping("/me")

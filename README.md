@@ -39,6 +39,9 @@ JWT_SECRET=your-very-long-secret-key
 JWT_EXPIRATION_MS=86400000
 APP_DEFAULT_ROLE=Customer
 APP_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,https://aihost.io.vn
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:5173
 ```
 
 Mac dinh ung dung dung profile `prod` trong `src/main/resources/application.properties`. Co the doi profile khi chay:
@@ -119,6 +122,8 @@ docker run --rm -p 8080:8080 `
 | --- | --- | --- | --- |
 | `POST` | `/api/auth/register` | Khong | Dang ky tai khoan va nhan JWT |
 | `POST` | `/api/auth/login` | Khong | Dang nhap va nhan JWT |
+| `GET` | `/api/auth/google/config` | Khong | Lay cau hinh Google public cho frontend |
+| `POST` | `/api/auth/google` | Khong | Dang nhap Google va nhan JWT |
 | `GET` | `/api/auth/me` | Bearer token | Lay thong tin user hien tai |
 | `GET` | `/api/locations` | Khong | Lay danh sach diem don/tra |
 | `GET` | `/api/trips/search` | Khong | Tim chuyen theo diem don, diem tra, ngay di |
@@ -180,6 +185,7 @@ Content-Type: application/json
 
 - Database PostgreSQL can co san cac bang tuong ung voi entity trong `src/main/java/.../entity`.
 - Role mac dinh khi dang ky lay theo `APP_DEFAULT_ROLE`, gia tri mac dinh la `Customer`.
+- Dang nhap Google can cau hinh them `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` trong Spring environment.
 - Script bo sung gia chang nam tai `src/main/resources/db/manual/route-segment-prices.sql`.
 - Booking hien tai tao trang thai `PENDING` va doi ghe sang trang thai `LOCKED`.
 
