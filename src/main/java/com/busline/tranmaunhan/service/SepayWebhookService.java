@@ -4,14 +4,12 @@ import com.busline.tranmaunhan.config.SepayWebhookProperties;
 import com.busline.tranmaunhan.dto.payment.SepayWebhookPayload;
 import com.busline.tranmaunhan.dto.payment.WebhookHandlingResult;
 import com.busline.tranmaunhan.dto.payment.WebhookResponse;
-import com.busline.tranmaunhan.entity.PaymentTransaction;
 import com.busline.tranmaunhan.repository.BookingRepository;
 import com.busline.tranmaunhan.repository.PaymentTransactionRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +17,6 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,7 +26,6 @@ import java.util.regex.Pattern;
 public class SepayWebhookService {
 
     private static final Pattern BOOKING_CODE_PATTERN = Pattern.compile("(?i)(SAIGONSTBK[A-Z0-9]+)");
-    private static final DateTimeFormatter SEPAY_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final BookingRepository bookingRepository;
@@ -98,49 +92,7 @@ public class SepayWebhookService {
     }
 
     private boolean persistTransaction(SepayWebhookPayload payload, String body) {
-        if (paymentTransactionRepository.existsBySepayId(payload.id())) {
-            return false;
-        }
-
-        long transferAmount = payload.transferAmount() == null ? 0L : payload.transferAmount();
-        boolean incomingTransfer = "in".equalsIgnoreCase(payload.transferType());
-        boolean outgoingTransfer = "out".equalsIgnoreCase(payload.transferType());
-
-        PaymentTransaction transaction = PaymentTransaction.builder()
-                .sepayId(payload.id())
-                .gateway(defaultString(payload.gateway()))
-                .transactionDate(parseTransactionDate(payload.transactionDate()))
-                .accountNumber(defaultString(payload.accountNumber()))
-                .subAccount(defaultString(payload.subAccount()))
-                .code(defaultString(payload.code()))
-                .amountIn(incomingTransfer ? transferAmount : 0L)
-                .amountOut(outgoingTransfer ? transferAmount : 0L)
-                .accumulated(payload.accumulated() == null ? 0L : payload.accumulated())
-                .content(defaultString(payload.content()))
-                .referenceCode(defaultString(payload.referenceCode()))
-                .body(defaultString(body))
-                .build();
-
-        try {
-            paymentTransactionRepository.saveAndFlush(transaction);
-            return true;
-        } catch (DataIntegrityViolationException exception) {
-            log.info("Ignoring duplicated SePay webhook for sepayId={}", payload.id());
-            return false;
-        }
-    }
-
-    private LocalDateTime parseTransactionDate(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-
-        try {
-            return LocalDateTime.parse(value, SEPAY_DATE_FORMATTER);
-        } catch (DateTimeParseException exception) {
-            log.warn("Cannot parse SePay transactionDate={}", value);
-            return null;
-        }
+        return paymentTransactionRepository.insertIfAbsent(payload, body);
     }
 
     private String extractBookingCode(SepayWebhookPayload payload) {
@@ -168,9 +120,5 @@ public class SepayWebhookService {
         }
 
         return matcher.group(1).toUpperCase();
-    }
-
-    private String defaultString(String value) {
-        return value == null ? "" : value;
     }
 }

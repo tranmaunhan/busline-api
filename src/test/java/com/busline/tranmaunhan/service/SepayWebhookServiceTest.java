@@ -2,7 +2,6 @@ package com.busline.tranmaunhan.service;
 
 import com.busline.tranmaunhan.config.SepayWebhookProperties;
 import com.busline.tranmaunhan.dto.payment.WebhookHandlingResult;
-import com.busline.tranmaunhan.entity.PaymentTransaction;
 import com.busline.tranmaunhan.repository.BookingRepository;
 import com.busline.tranmaunhan.repository.PaymentTransactionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,9 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 class SepayWebhookServiceTest {
 
@@ -50,26 +49,23 @@ class SepayWebhookServiceTest {
 
         assertEquals(400, result.status().value());
         assertEquals("Empty body", result.response().message());
-        verify(paymentTransactionRepository, never()).existsBySepayId(any());
+        verify(paymentTransactionRepository, never()).insertIfAbsent(any(), any());
     }
 
     @Test
     void shouldIgnoreDuplicateWebhook() {
-        when(paymentTransactionRepository.existsBySepayId(123L)).thenReturn(true);
+        when(paymentTransactionRepository.insertIfAbsent(any(), any())).thenReturn(false);
 
         WebhookHandlingResult result = sepayWebhookService.handleWebhook(validPayload(123L));
 
         assertEquals(200, result.status().value());
         assertTrue(result.response().success());
-        verify(paymentTransactionRepository, never()).saveAndFlush(any(PaymentTransaction.class));
         verify(bookingRepository, never()).markAsPaidByBookingCodeIfPending(any(), any(), any(), any());
     }
 
     @Test
     void shouldMarkBookingPaidForIncomingTransfer() {
-        when(paymentTransactionRepository.existsBySepayId(456L)).thenReturn(false);
-        when(paymentTransactionRepository.saveAndFlush(any(PaymentTransaction.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(paymentTransactionRepository.insertIfAbsent(any(), any())).thenReturn(true);
         when(bookingRepository.markAsPaidByBookingCodeIfPending(
                 eq("SAIGONSTBK9"),
                 eq(0),

@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+
 @RestController
 @RequiredArgsConstructor
 @Slf4j
@@ -31,10 +34,12 @@ public class SepayWebhookController {
             @RequestHeader(name = "x-sepay-timestamp", required = false) String timestampHeader,
             HttpServletRequest request
     ) {
+        String requestId = UUID.randomUUID().toString().substring(0, 8);
         long parsedTimestamp = parseTimestamp(timestampHeader);
 
-        log.info(
-                "SePay webhook received: method={}, path={}, clientIp={}, forwardedFor={}, hasSignature={}, signaturePreview={}, hasTimestampHeader={}, rawTimestampHeader={}, parsedTimestamp={}, contentType={}, userAgent={}, bodyBytes={}",
+        log.warn(
+                "=== SEPAY_WEBHOOK_RECEIVED === requestId={}, method={}, path={}, clientIp={}, forwardedFor={}, hasSignature={}, signaturePreview={}, hasTimestampHeader={}, rawTimestampHeader={}, parsedTimestamp={}, contentType={}, userAgent={}, bodyBytes={}, bodyPreview={}",
+                requestId,
                 request.getMethod(),
                 request.getRequestURI(),
                 request.getRemoteAddr(),
@@ -46,16 +51,41 @@ public class SepayWebhookController {
                 parsedTimestamp,
                 request.getContentType(),
                 request.getHeader("User-Agent"),
-                rawBody == null ? 0 : rawBody.length
+                rawBody == null ? 0 : rawBody.length,
+                buildBodyPreview(rawBody)
         );
 
         try {
             WebhookHandlingResult result = sepayWebhookService.handleWebhook(rawBody);
+            log.warn(
+                    "=== SEPAY_WEBHOOK_PROCESSED === requestId={}, httpStatus={}, success={}, message={}",
+                    requestId,
+                    result.status().value(),
+                    result.response().success(),
+                    result.response().message()
+            );
             return ResponseEntity.status(result.status()).body(result.response());
         } catch (Exception exception) {
-            log.error("SePay webhook error", exception);
+            log.error("=== SEPAY_WEBHOOK_FAILED === requestId={}", requestId, exception);
             return ResponseEntity.internalServerError().body(WebhookResponse.error("Internal error"));
         }
+    }
+
+    private String buildBodyPreview(byte[] rawBody) {
+        if (rawBody == null || rawBody.length == 0) {
+            return "empty";
+        }
+
+        String preview = new String(rawBody, StandardCharsets.UTF_8)
+                .replace("\r", "")
+                .replace("\n", " ")
+                .trim();
+
+        if (preview.length() <= 500) {
+            return preview;
+        }
+
+        return preview.substring(0, 500) + "...";
     }
 
     private long parseTimestamp(String timestampHeader) {
