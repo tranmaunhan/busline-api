@@ -3,6 +3,7 @@ package com.busline.tranmaunhan.service.serviceImpl;
 import com.busline.tranmaunhan.dto.booking.BookingResponse;
 import com.busline.tranmaunhan.dto.booking.CreateBookingRequest;
 import com.busline.tranmaunhan.dto.booking.TicketResponse;
+import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.entity.Bookings;
 import com.busline.tranmaunhan.entity.RouteStops;
 import com.busline.tranmaunhan.entity.Tickets;
@@ -209,6 +210,40 @@ public class BookingServiceImpl implements BookingService {
         return bookingRepository.findByUserIdWithDetails(userId).stream()
                 .map(bookingResponseMapper::toBookingResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse cancelPendingBooking(Integer bookingId, Integer userId) {
+        Bookings booking = bookingRepository.findByIdAndUserIdWithDetails(bookingId, userId)
+                .orElseThrow(() -> new NoSuchElementException("Khong tim thay booking cua nguoi dung"));
+
+        if (BOOKING_STATUS_CONFIRMED.equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Booking da thanh toan, khong the huy");
+        }
+
+        if (!BOOKING_STATUS_PENDING.equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Booking khong o trang thai cho thanh toan de huy");
+        }
+
+        if (booking.getTickets() == null || booking.getTickets().isEmpty()) {
+            throw new IllegalStateException("Booking khong co ticket de huy");
+        }
+
+        List<TripSeats> seatsToRelease = booking.getTickets().stream()
+                .map(Tickets::getTripSeat)
+                .filter(seat -> seat != null && SEAT_STATUS_LOCKED.equals(seat.getStatus()))
+                .toList();
+
+        seatsToRelease.forEach(seat -> seat.setStatus(SEAT_STATUS_AVAILABLE));
+        if (!seatsToRelease.isEmpty()) {
+            tripSeatRepository.saveAll(seatsToRelease);
+        }
+
+        ticketRepository.deleteAllInBatch(booking.getTickets());
+        bookingRepository.delete(booking);
+
+        return new MessageResponse("Huy booking thanh cong");
     }
 
     private String normalizeRequiredField(String value, String fieldName) {

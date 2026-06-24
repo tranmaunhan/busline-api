@@ -1,5 +1,6 @@
 package com.busline.tranmaunhan.controller;
 
+import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.booking.BookingResponse;
 import com.busline.tranmaunhan.dto.booking.CreateBookingRequest;
 import com.busline.tranmaunhan.security.CustomUserDetails;
@@ -16,12 +17,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -29,35 +31,35 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/bookings")
 @RequiredArgsConstructor
-@Tag(name = "Bookings", description = "Đặt vé và quản lý booking")
+@Tag(name = "Bookings", description = "Dat ve va quan ly booking")
 public class BookingController {
 
     private final BookingService bookingService;
 
     @PostMapping
     @Operation(
-            summary = "Đặt vé (lock ghế chờ thanh toán)",
+            summary = "Dat ve (lock ghe cho thanh toan)",
             description = """
-                    Tạo booking mới cho người dùng đã đăng nhập.
-                    Hệ thống sẽ:
-                    - Kiểm tra ghế còn trống (AVAILABLE)
-                    - Lock ghế (chuyển sang LOCKED) bằng SELECT FOR UPDATE
-                    - Tạo Booking với trạng thái PENDING
-                    - Tạo Ticket cho từng ghế đã chọn
+                    Tao booking moi cho nguoi dung da dang nhap.
+                    He thong se:
+                    - Kiem tra ghe con trong (AVAILABLE)
+                    - Lock ghe (chuyen sang LOCKED) bang SELECT FOR UPDATE
+                    - Tao Booking voi trang thai PENDING
+                    - Tao Ticket cho tung ghe da chon
                     """,
             security = @SecurityRequirement(name = "bearerAuth")
     )
-    @ApiResponse(responseCode = "201", description = "Đặt vé thành công, ghế đã được lock")
-    @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ hoặc ghế không còn trống",
+    @ApiResponse(responseCode = "201", description = "Dat ve thanh cong, ghe da duoc lock")
+    @ApiResponse(responseCode = "400", description = "Du lieu khong hop le hoac ghe khong con trong",
             content = @Content(schema = @Schema()))
-    @ApiResponse(responseCode = "401", description = "Chưa đăng nhập",
+    @ApiResponse(responseCode = "401", description = "Chua dang nhap",
             content = @Content(schema = @Schema()))
-    @ApiResponse(responseCode = "404", description = "Không tìm thấy chuyến xe / ghế / điểm đón trả",
+    @ApiResponse(responseCode = "404", description = "Khong tim thay chuyen xe / ghe / diem don tra",
             content = @Content(schema = @Schema()))
     public ResponseEntity<BookingResponse> createBooking(
             @Valid @RequestBody CreateBookingRequest request,
-            @AuthenticationPrincipal CustomUserDetails currentUser) {
-
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
         BookingResponse response = bookingService.createBooking(request, currentUser.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -80,10 +82,33 @@ public class BookingController {
             content = @Content(schema = @Schema()))
     public ResponseEntity<BookingResponse> confirmBookingSuccess(
             @PathVariable @Positive Integer bookingId,
-            @AuthenticationPrincipal CustomUserDetails currentUser) {
-
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
         BookingResponse response = bookingService.confirmBookingSuccess(bookingId, currentUser.getId());
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{bookingId}")
+    @Operation(
+            summary = "Huy booking chua thanh toan",
+            description = """
+                    Cho phep nguoi dung huy booking cua chinh minh neu booking van dang o trang thai cho thanh toan.
+                    Khi huy, he thong se xoa ticket, tra ghe ve AVAILABLE va xoa booking.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponse(responseCode = "200", description = "Huy booking thanh cong")
+    @ApiResponse(responseCode = "400", description = "Booking da thanh toan hoac khong o trang thai co the huy",
+            content = @Content(schema = @Schema()))
+    @ApiResponse(responseCode = "401", description = "Chua dang nhap",
+            content = @Content(schema = @Schema()))
+    @ApiResponse(responseCode = "404", description = "Khong tim thay booking cua nguoi dung",
+            content = @Content(schema = @Schema()))
+    public ResponseEntity<MessageResponse> cancelPendingBooking(
+            @PathVariable @Positive Integer bookingId,
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(bookingService.cancelPendingBooking(bookingId, currentUser.getId()));
     }
 
     @GetMapping("/lookup")
@@ -98,8 +123,8 @@ public class BookingController {
             content = @Content(schema = @Schema()))
     public ResponseEntity<BookingResponse> lookupBooking(
             @RequestParam String bookingCode,
-            @RequestParam String phone) {
-
+            @RequestParam String phone
+    ) {
         BookingResponse response = bookingService.getBookingByCodeAndPhone(bookingCode, phone);
         return ResponseEntity.ok(response);
     }
@@ -114,8 +139,8 @@ public class BookingController {
     @ApiResponse(responseCode = "401", description = "Chua dang nhap",
             content = @Content(schema = @Schema()))
     public ResponseEntity<List<BookingResponse>> getMyBookings(
-            @AuthenticationPrincipal CustomUserDetails currentUser) {
-
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
         return ResponseEntity.ok(bookingService.getBookingsByUserId(currentUser.getId()));
     }
 }

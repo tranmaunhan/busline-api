@@ -1,5 +1,6 @@
 package com.busline.tranmaunhan.service;
 
+import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.booking.BookingResponse;
 import com.busline.tranmaunhan.dto.booking.CreateBookingRequest;
 
@@ -8,11 +9,11 @@ import java.util.List;
 public interface BookingService {
 
     /**
-     * Tạo booking mới: lock ghế đã chọn, tạo Booking + Tickets.
+     * Tao booking moi: lock ghe da chon, tao Booking + Tickets.
      *
-     * @param request    thông tin đặt vé từ client
-     * @param userId     id của user đang đăng nhập (lấy từ JWT)
-     * @return BookingResponse chứa chi tiết booking vừa tạo
+     * @param request thong tin dat ve tu client
+     * @param userId id cua user dang dang nhap (lay tu JWT)
+     * @return BookingResponse chua chi tiet booking vua tao
      */
     BookingResponse createBooking(CreateBookingRequest request, Integer userId);
 
@@ -28,4 +29,6 @@ public interface BookingService {
     BookingResponse getBookingByCodeAndPhone(String bookingCode, String phone);
 
     List<BookingResponse> getBookingsByUserId(Integer userId);
+
+    MessageResponse cancelPendingBooking(Integer bookingId, Integer userId);
 }
