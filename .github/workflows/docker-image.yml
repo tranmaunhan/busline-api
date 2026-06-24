@@ -64,4 +64,6 @@ jobs:
               -e SEPAY_WEBHOOK_ALLOWED_CLOCK_SKEW_SECONDS="${{ secrets.SEPAY_WEBHOOK_ALLOWED_CLOCK_SKEW_SECONDS }}" \
               -e SEPAY_PENDING_BOOKING_STATUS="${{ secrets.SEPAY_PENDING_BOOKING_STATUS }}" \
               -e SEPAY_PAID_BOOKING_STATUS="${{ secrets.SEPAY_PAID_BOOKING_STATUS }}" \
+              -e MAIL_USERNAME="${{secrets.MAIL_USERNAME}}"\
+              -e MAIL_PASSWORD="${{secrets.MAIL_PASSWORD}}"\
               ${{ secrets.DOCKER_USERNAME }}/busline-api:latest
