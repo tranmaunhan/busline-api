@@ -53,11 +53,15 @@ jobs:
               --network busline-network \
               --restart always \
               -p 8080:8080 \
-              -e SPRING_DATASOURCE_URL=${{ secrets.DB_URL }} \
-              -e SPRING_DATASOURCE_USERNAME=${{ secrets.DB_USERNAME }} \
-              -e SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -e DB_URL="${{ secrets.DB_URL }}" \
+              -e DB_USERNAME="${{ secrets.DB_USERNAME }}" \
+              -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
               -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}" \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              -e SEPAY_WEBHOOK_SECRET="${{ secrets.SEPAY_WEBHOOK_SECRET }}" \
+              -e SEPAY_WEBHOOK_ALLOWED_CLOCK_SKEW_SECONDS="${{ secrets.SEPAY_WEBHOOK_ALLOWED_CLOCK_SKEW_SECONDS }}" \
+              -e SEPAY_PENDING_BOOKING_STATUS="${{ secrets.SEPAY_PENDING_BOOKING_STATUS }}" \
+              -e SEPAY_PAID_BOOKING_STATUS="${{ secrets.SEPAY_PAID_BOOKING_STATUS }}" \
               ${{ secrets.DOCKER_USERNAME }}/busline-api:latest

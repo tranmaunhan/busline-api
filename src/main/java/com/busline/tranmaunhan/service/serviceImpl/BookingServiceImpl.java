@@ -16,6 +16,7 @@ import com.busline.tranmaunhan.repository.TicketRepository;
 import com.busline.tranmaunhan.repository.TripRepository;
 import com.busline.tranmaunhan.repository.TripSeatRepository;
 import com.busline.tranmaunhan.repository.UsersRepository;
+import com.busline.tranmaunhan.service.BookingNotificationService;
 import com.busline.tranmaunhan.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
 
+    private static final Integer BOOKING_STATUS_PENDING = 0;
+    private static final Integer BOOKING_STATUS_CONFIRMED = 1;
     private static final Integer SEAT_STATUS_AVAILABLE = 0;
     private static final Integer SEAT_STATUS_LOCKED = 1;
 
@@ -44,6 +47,7 @@ public class BookingServiceImpl implements BookingService {
     private final RouteSegmentPriceRepository routeSegmentPriceRepository;
     private final BookingRepository bookingRepository;
     private final TicketRepository ticketRepository;
+    private final BookingNotificationService bookingNotificationService;
 
     @Override
     @Transactional
@@ -126,7 +130,7 @@ public class BookingServiceImpl implements BookingService {
         Bookings booking = new Bookings();
         booking.setUser(user);
         booking.setBookingTime(OffsetDateTime.now());
-        booking.setStatus(0);
+        booking.setStatus(BOOKING_STATUS_PENDING);
         booking.setTotalAmount(totalAmount);
 
         Bookings savedBooking = bookingRepository.saveAndFlush(booking);
@@ -153,7 +157,31 @@ public class BookingServiceImpl implements BookingService {
         tripSeatRepository.saveAll(seats);
         savedBooking.setTickets(savedTickets);
 
-        return toBookingResponse(savedBooking);
+        BookingResponse response = toBookingResponse(savedBooking);
+        bookingNotificationService.sendBookingPendingNotification(user, response);
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse confirmBookingSuccess(Integer bookingId, Integer userId) {
+        Bookings booking = bookingRepository.findByIdAndUserIdWithDetails(bookingId, userId)
+                .orElseThrow(() -> new NoSuchElementException("Khong tim thay booking cua nguoi dung"));
+
+        if (BOOKING_STATUS_CONFIRMED.equals(booking.getStatus())) {
+            return toBookingResponse(booking);
+        }
+
+        if (!BOOKING_STATUS_PENDING.equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Booking khong o trang thai cho xac nhan thanh cong");
+        }
+
+        booking.setStatus(BOOKING_STATUS_CONFIRMED);
+        Bookings savedBooking = bookingRepository.saveAndFlush(booking);
+
+        BookingResponse response = toBookingResponse(savedBooking);
+        bookingNotificationService.sendBookingConfirmedNotification(savedBooking.getUser(), response);
+        return response;
     }
 
     @Override

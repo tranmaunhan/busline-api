@@ -42,6 +42,16 @@ APP_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,https://aih
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_REDIRECT_URI=http://localhost:5173
+SEPAY_WEBHOOK_SECRET=your-sepay-webhook-secret
+SEPAY_WEBHOOK_ALLOWED_CLOCK_SKEW_SECONDS=300
+SEPAY_PENDING_BOOKING_STATUS=0
+SEPAY_PAID_BOOKING_STATUS=1
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+MAIL_FROM=your-email@gmail.com
+APP_NOTIFICATION_EMAIL_ENABLED=true
 ```
 
 Mac dinh ung dung dung profile `prod` trong `src/main/resources/application.properties`. Co the doi profile khi chay:
@@ -186,8 +196,12 @@ Content-Type: application/json
 - Database PostgreSQL can co san cac bang tuong ung voi entity trong `src/main/java/.../entity`.
 - Role mac dinh khi dang ky lay theo `APP_DEFAULT_ROLE`, gia tri mac dinh la `Customer`.
 - Dang nhap Google can cau hinh them `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` trong Spring environment.
+- SePay webhook dung chung database voi `busline-api`, vi vay chi can dung lai `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, khong can tach mot CSDL rieng cho payment.
+- SePay can them `SEPAY_WEBHOOK_SECRET`, `SEPAY_WEBHOOK_ALLOWED_CLOCK_SKEW_SECONDS`, `SEPAY_PENDING_BOOKING_STATUS`, `SEPAY_PAID_BOOKING_STATUS`.
+- Thong bao dat cho/dat ve qua email can cau hinh them `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`.
 - Script bo sung gia chang nam tai `src/main/resources/db/manual/route-segment-prices.sql`.
 - Booking hien tai tao trang thai `PENDING` va doi ghe sang trang thai `LOCKED`.
+- Sau khi tao booking, he thong gui email giu cho. Endpoint `POST /api/bookings/{bookingId}/confirm-success` dung de chuyen booking sang `CONFIRMED` va gui email dat ve thanh cong.
 
 ## CI/CD
 
@@ -203,6 +217,10 @@ DB_URL
 DB_USERNAME
 DB_PASSWORD
 JWT_SECRET
+SEPAY_WEBHOOK_SECRET
+SEPAY_WEBHOOK_ALLOWED_CLOCK_SKEW_SECONDS
+SEPAY_PENDING_BOOKING_STATUS
+SEPAY_PAID_BOOKING_STATUS
 ```
 
 ## Cac phan da don dep

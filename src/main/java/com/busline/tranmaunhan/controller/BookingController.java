@@ -11,11 +11,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -58,6 +60,30 @@ public class BookingController {
 
         BookingResponse response = bookingService.createBooking(request, currentUser.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/{bookingId}/confirm-success")
+    @Operation(
+            summary = "Xac nhan dat ve thanh cong",
+            description = """
+                    Cap nhat booking tu trang thai cho xac nhan sang thanh cong.
+                    Sau khi xac nhan, he thong se gui them thong bao dat ve thanh cong qua email.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponse(responseCode = "200", description = "Xac nhan dat ve thanh cong")
+    @ApiResponse(responseCode = "400", description = "Booking khong o trang thai hop le",
+            content = @Content(schema = @Schema()))
+    @ApiResponse(responseCode = "401", description = "Chua dang nhap",
+            content = @Content(schema = @Schema()))
+    @ApiResponse(responseCode = "404", description = "Khong tim thay booking cua nguoi dung",
+            content = @Content(schema = @Schema()))
+    public ResponseEntity<BookingResponse> confirmBookingSuccess(
+            @PathVariable @Positive Integer bookingId,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+
+        BookingResponse response = bookingService.confirmBookingSuccess(bookingId, currentUser.getId());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/lookup")

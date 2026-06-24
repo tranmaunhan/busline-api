@@ -16,6 +16,8 @@ public interface BookingService {
      */
     BookingResponse createBooking(CreateBookingRequest request, Integer userId);
 
+    BookingResponse confirmBookingSuccess(Integer bookingId, Integer userId);
+
     /**
      * Tra cuu booking theo ma dat ve va so dien thoai cua nguoi dung.
      *
