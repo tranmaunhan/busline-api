@@ -17,6 +17,7 @@ import com.busline.tranmaunhan.repository.TripRepository;
 import com.busline.tranmaunhan.repository.TripSeatRepository;
 import com.busline.tranmaunhan.repository.UsersRepository;
 import com.busline.tranmaunhan.service.BookingNotificationService;
+import com.busline.tranmaunhan.service.BookingResponseMapper;
 import com.busline.tranmaunhan.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -48,6 +48,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final TicketRepository ticketRepository;
     private final BookingNotificationService bookingNotificationService;
+    private final BookingResponseMapper bookingResponseMapper;
 
     @Override
     @Transactional
@@ -157,7 +158,7 @@ public class BookingServiceImpl implements BookingService {
         tripSeatRepository.saveAll(seats);
         savedBooking.setTickets(savedTickets);
 
-        BookingResponse response = toBookingResponse(savedBooking);
+        BookingResponse response = bookingResponseMapper.toBookingResponse(savedBooking);
         bookingNotificationService.sendBookingPendingNotification(user, response);
         return response;
     }
@@ -169,7 +170,7 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new NoSuchElementException("Khong tim thay booking cua nguoi dung"));
 
         if (BOOKING_STATUS_CONFIRMED.equals(booking.getStatus())) {
-            return toBookingResponse(booking);
+            return bookingResponseMapper.toBookingResponse(booking);
         }
 
         if (!BOOKING_STATUS_PENDING.equals(booking.getStatus())) {
@@ -179,7 +180,7 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(BOOKING_STATUS_CONFIRMED);
         Bookings savedBooking = bookingRepository.saveAndFlush(booking);
 
-        BookingResponse response = toBookingResponse(savedBooking);
+        BookingResponse response = bookingResponseMapper.toBookingResponse(savedBooking);
         bookingNotificationService.sendBookingConfirmedNotification(savedBooking.getUser(), response);
         return response;
     }
@@ -195,7 +196,7 @@ public class BookingServiceImpl implements BookingService {
                         normalizedPhone)
                 .orElseThrow(() -> new NoSuchElementException("Khong tim thay booking voi thong tin da cung cap"));
 
-        return toBookingResponse(booking);
+        return bookingResponseMapper.toBookingResponse(booking);
     }
 
     @Override
@@ -206,47 +207,8 @@ public class BookingServiceImpl implements BookingService {
         }
 
         return bookingRepository.findByUserIdWithDetails(userId).stream()
-                .map(this::toBookingResponse)
+                .map(bookingResponseMapper::toBookingResponse)
                 .toList();
-    }
-
-    private BookingResponse toBookingResponse(Bookings booking) {
-        if (booking.getTickets() == null || booking.getTickets().isEmpty()) {
-            throw new IllegalStateException("Booking khong co ticket de tra cuu");
-        }
-
-        List<Tickets> sortedTickets = booking.getTickets().stream()
-                .sorted(Comparator.comparing(Tickets::getId))
-                .toList();
-
-        Tickets firstTicket = sortedTickets.get(0);
-        Trips trip = firstTicket.getTrip();
-        RouteStops pickupStop = firstTicket.getPickupStop();
-        RouteStops dropoffStop = firstTicket.getDropoffStop();
-
-        List<TicketResponse> ticketResponses = sortedTickets.stream()
-                .map(ticket -> new TicketResponse(
-                        ticket.getId(),
-                        ticket.getTripSeat().getId(),
-                        ticket.getTripSeat().getSeatTemplate().getSeatCode(),
-                        ticket.getTripSeat().getSeatTemplate().getDeck(),
-                        ticket.getTripSeat().getSeatTemplate().getSeatType(),
-                        ticket.getPrice()))
-                .toList();
-
-        return new BookingResponse(
-                booking.getId(),
-                booking.getBookingCode(),
-                booking.getBookingTime(),
-                booking.getStatus(),
-                booking.getTotalAmount(),
-                trip.getId(),
-                trip.getDepartureTime(),
-                trip.getRoute().getOrigin().getName(),
-                trip.getRoute().getDestination().getName(),
-                pickupStop.getLocation().getName(),
-                dropoffStop.getLocation().getName(),
-                ticketResponses);
     }
 
     private String normalizeRequiredField(String value, String fieldName) {

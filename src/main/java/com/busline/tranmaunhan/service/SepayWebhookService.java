@@ -1,9 +1,11 @@
 package com.busline.tranmaunhan.service;
 
 import com.busline.tranmaunhan.config.SepayWebhookProperties;
+import com.busline.tranmaunhan.dto.booking.BookingResponse;
 import com.busline.tranmaunhan.dto.payment.SepayWebhookPayload;
 import com.busline.tranmaunhan.dto.payment.WebhookHandlingResult;
 import com.busline.tranmaunhan.dto.payment.WebhookResponse;
+import com.busline.tranmaunhan.entity.Bookings;
 import com.busline.tranmaunhan.repository.BookingRepository;
 import com.busline.tranmaunhan.repository.PaymentTransactionRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,6 +33,8 @@ public class SepayWebhookService {
     private final BookingRepository bookingRepository;
     private final SepayWebhookProperties properties;
     private final ObjectMapper objectMapper;
+    private final BookingNotificationService bookingNotificationService;
+    private final BookingResponseMapper bookingResponseMapper;
 
     @Transactional
     public WebhookHandlingResult handleWebhook(byte[] rawBody) {
@@ -80,6 +84,16 @@ public class SepayWebhookService {
                 updatedRows
         );
 
+        if (updatedRows > 0) {
+            sendConfirmedNotification(bookingCode);
+        } else {
+            log.warn(
+                    "SePay webhook did not update booking status for bookingCode={}, amount={}",
+                    bookingCode,
+                    transferAmount
+            );
+        }
+
         return new WebhookHandlingResult(HttpStatus.OK, WebhookResponse.ok());
     }
 
@@ -93,6 +107,27 @@ public class SepayWebhookService {
 
     private boolean persistTransaction(SepayWebhookPayload payload, String body) {
         return paymentTransactionRepository.insertIfAbsent(payload, body);
+    }
+
+    private void sendConfirmedNotification(String bookingCode) {
+        bookingRepository.findByBookingCodeWithDetails(bookingCode)
+                .ifPresentOrElse(
+                        this::notifyBookingConfirmed,
+                        () -> log.warn(
+                                "Cannot send confirmed notification because booking {} was not found after update",
+                                bookingCode
+                        )
+                );
+    }
+
+    private void notifyBookingConfirmed(Bookings booking) {
+        try {
+            BookingResponse response = bookingResponseMapper.toBookingResponse(booking);
+            bookingNotificationService.sendBookingConfirmedNotification(booking.getUser(), response);
+            log.info("Sent confirmed notification for bookingCode={}", booking.getBookingCode());
+        } catch (Exception exception) {
+            log.error("Failed to send confirmed notification for bookingCode={}", booking.getBookingCode(), exception);
+        }
     }
 
     private String extractBookingCode(SepayWebhookPayload payload) {
