@@ -17,6 +17,8 @@ public interface TripRepository extends JpaRepository<com.busline.tranmaunhan.en
 
     boolean existsByVehicleIdAndDepartureTime(Integer vehicleId, OffsetDateTime departureTime);
 
+    boolean existsByRouteId(Integer routeId);
+
     @Query(value = """
             SELECT
                 trip_id AS tripId,

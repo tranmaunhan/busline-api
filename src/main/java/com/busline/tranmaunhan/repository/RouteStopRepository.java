@@ -19,6 +19,8 @@ public interface RouteStopRepository extends JpaRepository<RouteStops, Integer> 
 
     List<RouteStops> findAllByRouteIdOrderByStopOrderAsc(Integer routeId);
 
+    void deleteAllByRouteId(Integer routeId);
+
     @Query("""
             SELECT
                 rs.route.id AS routeId,

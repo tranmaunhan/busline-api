@@ -27,11 +27,19 @@ public interface AdminService {
 
     AdminTripScheduleResponse createTripSchedule(AdminCreateTripScheduleRequest request);
 
+    AdminTripScheduleResponse updateTripSchedule(Integer scheduleId, AdminCreateTripScheduleRequest request);
+
+    void deleteTripSchedule(Integer scheduleId);
+
     AdminGeneratedTripsResponse generateTripsFromSchedules(AdminGenerateTripsRequest request);
 
     AdminRoutesResponse getRoutes();
 
     AdminRouteDetailResponse createRoute(AdminCreateRouteRequest request);
+
+    AdminRouteDetailResponse updateRoute(Integer routeId, AdminCreateRouteRequest request);
+
+    void deleteRoute(Integer routeId);
 
     AdminRouteDetailResponse getRouteDetail(Integer routeId);
 

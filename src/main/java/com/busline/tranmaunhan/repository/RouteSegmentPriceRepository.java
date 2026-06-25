@@ -42,6 +42,8 @@ public interface RouteSegmentPriceRepository extends JpaRepository<RouteSegmentP
 
     List<RouteSegmentPrices> findAllByRouteIdOrderByPickupStopStopOrderAscDropoffStopStopOrderAsc(Integer routeId);
 
+    void deleteAllByRouteId(Integer routeId);
+
     interface RouteSegmentPriceProjection {
         Integer getRouteId();
 

@@ -17,6 +17,12 @@ public interface TripScheduleRepository extends JpaRepository<TripSchedules, Int
     @EntityGraph(attributePaths = {"route", "route.origin", "route.destination", "vehicle", "vehicle.vehicleType"})
     List<TripSchedules> findAllByIdInOrderByCreatedAtDescIdDesc(List<Integer> ids);
 
+    @Override
+    @EntityGraph(attributePaths = {"route", "route.origin", "route.destination", "vehicle", "vehicle.vehicleType"})
+    java.util.Optional<TripSchedules> findById(Integer id);
+
+    boolean existsByRouteId(Integer routeId);
+
     @EntityGraph(attributePaths = {"route", "route.origin", "route.destination", "vehicle", "vehicle.vehicleType"})
     @Query("""
             SELECT ts

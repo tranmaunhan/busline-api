@@ -417,6 +417,41 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     @Transactional
+    public AdminTripScheduleResponse updateTripSchedule(Integer scheduleId, AdminCreateTripScheduleRequest request) {
+        validateTripScheduleRequest(request);
+
+        TripSchedules tripSchedule = tripScheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new java.util.NoSuchElementException("Khong tim thay lich chay voi id = " + scheduleId));
+        Routes route = routesRepository.findById(request.routeId())
+                .orElseThrow(() -> new java.util.NoSuchElementException("Khong tim thay tuyen voi id = " + request.routeId()));
+        Vehicles vehicle = vehicleRepository.findById(request.vehicleId())
+                .orElseThrow(() -> new java.util.NoSuchElementException("Khong tim thay xe voi id = " + request.vehicleId()));
+
+        validateVehicleCanRunRoute(vehicle);
+
+        tripSchedule.setRoute(route);
+        tripSchedule.setVehicle(vehicle);
+        tripSchedule.setDepartureTime(request.departureTime());
+        tripSchedule.setStartDate(request.startDate());
+        tripSchedule.setEndDate(request.endDate());
+        tripSchedule.setStatus(request.status());
+        tripSchedule.setUpdatedAt(OffsetDateTime.now(APP_ZONE));
+
+        return toTripScheduleResponse(tripScheduleRepository.save(tripSchedule));
+    }
+
+    @Override
+    @Transactional
+    public void deleteTripSchedule(Integer scheduleId) {
+        if (!tripScheduleRepository.existsById(scheduleId)) {
+            throw new java.util.NoSuchElementException("Khong tim thay lich chay voi id = " + scheduleId);
+        }
+
+        tripScheduleRepository.deleteById(scheduleId);
+    }
+
+    @Override
+    @Transactional
     public AdminGeneratedTripsResponse generateTripsFromSchedules(AdminGenerateTripsRequest request) {
         if (request.fromDate().isAfter(request.toDate())) {
             throw new IllegalArgumentException("fromDate khong duoc sau toDate");
@@ -564,59 +599,40 @@ public class AdminServiceImpl implements AdminService {
     public AdminRouteDetailResponse createRoute(AdminCreateRouteRequest request) {
         validateCreateRouteRequest(request);
 
-        Map<Integer, Locations> locationsById = locationsRepository.findAllById(
-                        request.stops().stream()
-                                .map(AdminCreateRouteRequest.StopRequest::locationId)
-                                .distinct()
-                                .toList()
-                ).stream()
-                .collect(Collectors.toMap(Locations::getId, location -> location));
-
-        if (locationsById.size() != request.stops().stream().map(AdminCreateRouteRequest.StopRequest::locationId).distinct().count()) {
-            throw new IllegalArgumentException("Co diem dung khong ton tai trong he thong");
-        }
+        Map<Integer, Locations> locationsById = loadLocationsForRouteRequest(request);
 
         Routes route = new Routes();
-        route.setOrigin(locationsById.get(request.stops().getFirst().locationId()));
-        route.setDestination(locationsById.get(request.stops().getLast().locationId()));
-        route.setDistanceKm(resolveRouteDistance(request));
-        route.setEstimatedDurationMinutes(resolveRouteDuration(request));
         Routes savedRoute = routesRepository.save(route);
+        return persistRouteShape(savedRoute, request, locationsById);
+    }
 
-        List<RouteStops> savedStops = new ArrayList<>();
-        Map<Integer, RouteStops> stopByOrder = new LinkedHashMap<>();
+    @Override
+    @Transactional
+    public AdminRouteDetailResponse updateRoute(Integer routeId, AdminCreateRouteRequest request) {
+        validateCreateRouteRequest(request);
+        assertRouteCanBeMutated(routeId);
 
-        for (int index = 0; index < request.stops().size(); index++) {
-            AdminCreateRouteRequest.StopRequest stopRequest = request.stops().get(index);
+        Routes route = routesRepository.findById(routeId)
+                .orElseThrow(() -> new java.util.NoSuchElementException("Khong tim thay tuyen voi id = " + routeId));
+        Map<Integer, Locations> locationsById = loadLocationsForRouteRequest(request);
 
-            RouteStops stop = new RouteStops();
-            stop.setRoute(savedRoute);
-            stop.setLocation(locationsById.get(stopRequest.locationId()));
-            stop.setStopOrder(index + 1);
-            stop.setDistanceFromStartKm(stopRequest.distanceFromStartKm());
-            stop.setEstimatedTimeFromStartMinutes(stopRequest.estimatedTimeFromStartMinutes());
+        routeSegmentPriceRepository.deleteAllByRouteId(routeId);
+        routeStopRepository.deleteAllByRouteId(routeId);
 
-            RouteStops savedStop = routeStopRepository.save(stop);
-            savedStops.add(savedStop);
-            stopByOrder.put(savedStop.getStopOrder(), savedStop);
-        }
+        return persistRouteShape(route, request, locationsById);
+    }
 
-        List<RouteSegmentPrices> savedSegmentPrices = request.segmentPrices().stream()
-                .map(segmentRequest -> {
-                    RouteStops pickupStop = stopByOrder.get(segmentRequest.pickupStopOrder());
-                    RouteStops dropoffStop = stopByOrder.get(segmentRequest.dropoffStopOrder());
+    @Override
+    @Transactional
+    public void deleteRoute(Integer routeId) {
+        assertRouteCanBeMutated(routeId);
 
-                    RouteSegmentPrices price = new RouteSegmentPrices();
-                    price.setRoute(savedRoute);
-                    price.setPickupStop(pickupStop);
-                    price.setDropoffStop(dropoffStop);
-                    price.setPrice(segmentRequest.price());
-                    return price;
-                })
-                .toList();
+        Routes route = routesRepository.findById(routeId)
+                .orElseThrow(() -> new java.util.NoSuchElementException("Khong tim thay tuyen voi id = " + routeId));
 
-        List<RouteSegmentPrices> persistedPrices = routeSegmentPriceRepository.saveAll(savedSegmentPrices);
-        return toRouteDetailResponse(savedRoute, savedStops, persistedPrices);
+        routeSegmentPriceRepository.deleteAllByRouteId(routeId);
+        routeStopRepository.deleteAllByRouteId(routeId);
+        routesRepository.delete(route);
     }
 
     @Override
@@ -767,6 +783,78 @@ public class AdminServiceImpl implements AdminService {
     private void validateVehicleCanRunRoute(Vehicles vehicle) {
         if (vehicle.getVehicleType() == null) {
             throw new IllegalArgumentException("Xe chua duoc cau hinh loai xe");
+        }
+    }
+
+    private Map<Integer, Locations> loadLocationsForRouteRequest(AdminCreateRouteRequest request) {
+        Map<Integer, Locations> locationsById = locationsRepository.findAllById(
+                        request.stops().stream()
+                                .map(AdminCreateRouteRequest.StopRequest::locationId)
+                                .distinct()
+                                .toList()
+                ).stream()
+                .collect(Collectors.toMap(Locations::getId, location -> location));
+
+        if (locationsById.size() != request.stops().stream().map(AdminCreateRouteRequest.StopRequest::locationId).distinct().count()) {
+            throw new IllegalArgumentException("Co diem dung khong ton tai trong he thong");
+        }
+
+        return locationsById;
+    }
+
+    private AdminRouteDetailResponse persistRouteShape(
+            Routes route,
+            AdminCreateRouteRequest request,
+            Map<Integer, Locations> locationsById
+    ) {
+        route.setOrigin(locationsById.get(request.stops().getFirst().locationId()));
+        route.setDestination(locationsById.get(request.stops().getLast().locationId()));
+        route.setDistanceKm(resolveRouteDistance(request));
+        route.setEstimatedDurationMinutes(resolveRouteDuration(request));
+        Routes savedRoute = routesRepository.save(route);
+
+        List<RouteStops> savedStops = new ArrayList<>();
+        Map<Integer, RouteStops> stopByOrder = new LinkedHashMap<>();
+
+        for (int index = 0; index < request.stops().size(); index++) {
+            AdminCreateRouteRequest.StopRequest stopRequest = request.stops().get(index);
+
+            RouteStops stop = new RouteStops();
+            stop.setRoute(savedRoute);
+            stop.setLocation(locationsById.get(stopRequest.locationId()));
+            stop.setStopOrder(index + 1);
+            stop.setDistanceFromStartKm(stopRequest.distanceFromStartKm());
+            stop.setEstimatedTimeFromStartMinutes(stopRequest.estimatedTimeFromStartMinutes());
+
+            RouteStops savedStop = routeStopRepository.save(stop);
+            savedStops.add(savedStop);
+            stopByOrder.put(savedStop.getStopOrder(), savedStop);
+        }
+
+        List<RouteSegmentPrices> savedSegmentPrices = request.segmentPrices().stream()
+                .map(segmentRequest -> {
+                    RouteStops pickupStop = stopByOrder.get(segmentRequest.pickupStopOrder());
+                    RouteStops dropoffStop = stopByOrder.get(segmentRequest.dropoffStopOrder());
+
+                    RouteSegmentPrices price = new RouteSegmentPrices();
+                    price.setRoute(savedRoute);
+                    price.setPickupStop(pickupStop);
+                    price.setDropoffStop(dropoffStop);
+                    price.setPrice(segmentRequest.price());
+                    return price;
+                })
+                .toList();
+
+        List<RouteSegmentPrices> persistedPrices = routeSegmentPriceRepository.saveAll(savedSegmentPrices);
+        return toRouteDetailResponse(savedRoute, savedStops, persistedPrices);
+    }
+
+    private void assertRouteCanBeMutated(Integer routeId) {
+        if (tripScheduleRepository.existsByRouteId(routeId)) {
+            throw new IllegalArgumentException("Tuyen da duoc gan vao lich chay, khong the sua hoac xoa");
+        }
+        if (tripRepository.existsByRouteId(routeId)) {
+            throw new IllegalArgumentException("Tuyen da phat sinh chuyen xe, khong the sua hoac xoa");
         }
     }
 

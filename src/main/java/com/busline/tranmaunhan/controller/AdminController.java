@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -85,6 +86,27 @@ public class AdminController {
         return ResponseEntity.status(HttpStatus.CREATED).body(adminService.createTripSchedule(request));
     }
 
+    @PutMapping("/trip-schedules/{scheduleId}")
+    @Operation(summary = "Cap nhat lich chay mau", description = "Chinh sua tuyen, xe, gio chay va khoang ap dung cua lich chay mau")
+    @ApiResponse(responseCode = "200", description = "Cap nhat lich chay thanh cong")
+    @ApiResponse(responseCode = "400", description = "Du lieu lich chay khong hop le")
+    @ApiResponse(responseCode = "404", description = "Khong tim thay lich chay")
+    public ResponseEntity<AdminTripScheduleResponse> updateTripSchedule(
+            @PathVariable @Positive Integer scheduleId,
+            @Valid @RequestBody AdminCreateTripScheduleRequest request
+    ) {
+        return ResponseEntity.ok(adminService.updateTripSchedule(scheduleId, request));
+    }
+
+    @DeleteMapping("/trip-schedules/{scheduleId}")
+    @Operation(summary = "Xoa lich chay mau", description = "Xoa mau lich chay de dung sinh chuyen tu dong cho cac dot sau")
+    @ApiResponse(responseCode = "204", description = "Xoa lich chay thanh cong")
+    @ApiResponse(responseCode = "404", description = "Khong tim thay lich chay")
+    public ResponseEntity<Void> deleteTripSchedule(@PathVariable @Positive Integer scheduleId) {
+        adminService.deleteTripSchedule(scheduleId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/trip-schedules/generate")
     @Operation(summary = "Sinh chuyen xe tu lich", description = "Sinh cac ban ghi Trips va TripSeats tu cac lich chay dang hoat dong trong khoang ngay")
     @ApiResponse(responseCode = "200", description = "Sinh chuyen xe thanh cong")
@@ -108,6 +130,28 @@ public class AdminController {
     @ApiResponse(responseCode = "400", description = "Du lieu tao tuyen xe khong hop le")
     public ResponseEntity<AdminRouteDetailResponse> createRoute(@Valid @RequestBody AdminCreateRouteRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(adminService.createRoute(request));
+    }
+
+    @PutMapping("/routes/{routeId}")
+    @Operation(summary = "Cap nhat tuyen xe", description = "Cap nhat diem dung, khoang cach, thoi gian va bang gia theo chang cua tuyen")
+    @ApiResponse(responseCode = "200", description = "Cap nhat tuyen xe thanh cong")
+    @ApiResponse(responseCode = "400", description = "Du lieu tuyen xe khong hop le hoac tuyen da phat sinh lich/chuyen")
+    @ApiResponse(responseCode = "404", description = "Khong tim thay tuyen xe")
+    public ResponseEntity<AdminRouteDetailResponse> updateRoute(
+            @PathVariable @Positive Integer routeId,
+            @Valid @RequestBody AdminCreateRouteRequest request
+    ) {
+        return ResponseEntity.ok(adminService.updateRoute(routeId, request));
+    }
+
+    @DeleteMapping("/routes/{routeId}")
+    @Operation(summary = "Xoa tuyen xe", description = "Xoa tuyen xe khi tuyen chua duoc gan vao lich chay hoac chuyen xe")
+    @ApiResponse(responseCode = "204", description = "Xoa tuyen xe thanh cong")
+    @ApiResponse(responseCode = "400", description = "Tuyen da phat sinh lich/chuyen nen khong the xoa")
+    @ApiResponse(responseCode = "404", description = "Khong tim thay tuyen xe")
+    public ResponseEntity<Void> deleteRoute(@PathVariable @Positive Integer routeId) {
+        adminService.deleteRoute(routeId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/routes/{routeId}")
