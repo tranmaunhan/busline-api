@@ -16,11 +16,15 @@ public interface AuthService {
 
     AuthResponse login(LoginRequest request);
 
+    AuthResponse loginAdmin(LoginRequest request);
+
     GoogleAuthConfigResponse getGoogleAuthConfig();
 
     AuthResponse loginWithGoogle(GoogleAuthRequest request);
 
     UserProfileResponse getCurrentUserProfile(CustomUserDetails currentUser);
+
+    UserProfileResponse getCurrentAdminProfile(CustomUserDetails currentUser);
 
     MessageResponse changePassword(ChangePasswordRequest request, Integer userId);
 }

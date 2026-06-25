@@ -4,9 +4,12 @@ import com.busline.tranmaunhan.entity.Bookings;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -127,4 +130,50 @@ public interface BookingRepository extends JpaRepository<Bookings, Integer> {
             ORDER BY b.bookingTime DESC, b.id DESC
             """)
     List<Bookings> findByUserIdWithDetails(@Param("userId") Integer userId);
+
+    @Query("""
+            SELECT b.id
+            FROM Bookings b
+            ORDER BY b.bookingTime DESC, b.id DESC
+            """)
+    List<Integer> findLatestBookingIds(Pageable pageable);
+
+    @Query("""
+            SELECT DISTINCT b FROM Bookings b
+            JOIN FETCH b.user u
+            LEFT JOIN FETCH b.tickets t
+            LEFT JOIN FETCH t.trip trip
+            LEFT JOIN FETCH trip.route route
+            LEFT JOIN FETCH route.origin
+            LEFT JOIN FETCH route.destination
+            LEFT JOIN FETCH t.tripSeat ts
+            LEFT JOIN FETCH ts.seatTemplate
+            WHERE b.id IN :bookingIds
+            """)
+    List<Bookings> findByIdInWithAdminDetails(@Param("bookingIds") Collection<Integer> bookingIds);
+
+    @Query("""
+            SELECT
+                b.id AS bookingId,
+                b.bookingTime AS bookingTime,
+                b.status AS status,
+                b.totalAmount AS totalAmount
+            FROM Bookings b
+            WHERE b.bookingTime >= :start
+              AND b.bookingTime < :end
+            """)
+    List<AdminBookingMetricProjection> findAdminMetricsByBookingTimeBetween(
+            @Param("start") OffsetDateTime start,
+            @Param("end") OffsetDateTime end
+    );
+
+    interface AdminBookingMetricProjection {
+        Integer getBookingId();
+
+        OffsetDateTime getBookingTime();
+
+        Integer getStatus();
+
+        BigDecimal getTotalAmount();
+    }
 }

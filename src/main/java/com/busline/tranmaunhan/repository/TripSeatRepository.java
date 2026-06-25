@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface TripSeatRepository extends JpaRepository<TripSeats, Integer> {
@@ -38,6 +39,17 @@ public interface TripSeatRepository extends JpaRepository<TripSeats, Integer> {
 
     List<TripSeats> findByIdIn(List<Integer> ids);
 
+    @Query("""
+            SELECT
+                ts.trip.id AS tripId,
+                COUNT(ts.id) AS availableSeatCount
+            FROM TripSeats ts
+            WHERE ts.trip.id IN :tripIds
+              AND ts.status = 0
+            GROUP BY ts.trip.id
+            """)
+    List<TripAvailableSeatProjection> countAvailableSeatsByTripIds(@Param("tripIds") Collection<Integer> tripIds);
+
     interface TripSeatMapProjection {
         Integer getTripSeatId();
 
@@ -53,6 +65,12 @@ public interface TripSeatRepository extends JpaRepository<TripSeats, Integer> {
 
         String getSeatType();
 
-        String getStatus();
+        Integer getStatus();
+    }
+
+    interface TripAvailableSeatProjection {
+        Integer getTripId();
+
+        Long getAvailableSeatCount();
     }
 }

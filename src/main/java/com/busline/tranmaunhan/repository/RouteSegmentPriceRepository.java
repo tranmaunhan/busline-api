@@ -40,6 +40,8 @@ public interface RouteSegmentPriceRepository extends JpaRepository<RouteSegmentP
             @Param("dropoffLocationId") Integer dropoffLocationId
     );
 
+    List<RouteSegmentPrices> findAllByRouteIdOrderByPickupStopStopOrderAscDropoffStopStopOrderAsc(Integer routeId);
+
     interface RouteSegmentPriceProjection {
         Integer getRouteId();
 

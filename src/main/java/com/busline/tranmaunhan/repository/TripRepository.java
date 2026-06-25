@@ -6,11 +6,16 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface TripRepository extends JpaRepository<com.busline.tranmaunhan.entity.Trips, Integer> {
+
+    boolean existsByRouteIdAndVehicleIdAndDepartureTime(Integer routeId, Integer vehicleId, OffsetDateTime departureTime);
+
+    boolean existsByVehicleIdAndDepartureTime(Integer vehicleId, OffsetDateTime departureTime);
 
     @Query(value = """
             SELECT
@@ -57,6 +62,46 @@ public interface TripRepository extends JpaRepository<com.busline.tranmaunhan.en
             """)
     List<TripRouteProjection> findRouteIdsByTripIds(@Param("tripIds") Collection<Integer> tripIds);
 
+    @Query("""
+            SELECT
+                t.id AS tripId,
+                t.departureTime AS departureTime,
+                t.status AS tripStatus,
+                route.id AS routeId,
+                origin.id AS originId,
+                origin.name AS originName,
+                destination.id AS destinationId,
+                destination.name AS destinationName,
+                vehicle.id AS vehicleId,
+                vehicle.licensePlate AS licensePlate,
+                vehicle.status AS vehicleStatus,
+                vehicleType.typeName AS vehicleTypeName,
+                vehicleType.totalSeats AS totalSeats
+            FROM Trips t
+            JOIN t.route route
+            JOIN route.origin origin
+            JOIN route.destination destination
+            JOIN t.vehicle vehicle
+            LEFT JOIN vehicle.vehicleType vehicleType
+            WHERE t.departureTime >= :start
+              AND t.departureTime < :end
+            ORDER BY t.departureTime ASC, t.id ASC
+            """)
+    List<AdminTripProjection> findAdminTripsByDepartureTimeBetween(
+            @Param("start") OffsetDateTime start,
+            @Param("end") OffsetDateTime end
+    );
+
+    @Query("""
+            SELECT
+                t.vehicle.id AS vehicleId,
+                MAX(t.departureTime) AS latestDepartureTime
+            FROM Trips t
+            WHERE t.vehicle.id IN :vehicleIds
+            GROUP BY t.vehicle.id
+            """)
+    List<VehicleLastTripProjection> findLatestTripTimesByVehicleIds(@Param("vehicleIds") Collection<Integer> vehicleIds);
+
     interface TripSearchProjection {
         Integer getTripId();
 
@@ -96,9 +141,14 @@ public interface TripRepository extends JpaRepository<com.busline.tranmaunhan.en
 
         Integer getRouteId();
 
+        Integer getOriginId();
+
         String getOriginName();
 
+        Integer getDestinationId();
+
         String getDestinationName();
+
 
         Double getTotalDistanceKm();
 
@@ -107,5 +157,39 @@ public interface TripRepository extends JpaRepository<com.busline.tranmaunhan.en
         String getRouteStops();
 
         String getSeatLayout();
+    }
+
+    interface AdminTripProjection {
+        Integer getTripId();
+
+        OffsetDateTime getDepartureTime();
+
+        Integer getTripStatus();
+
+        Integer getRouteId();
+
+        Integer getOriginId();
+
+        String getOriginName();
+
+        Integer getDestinationId();
+
+        String getDestinationName();
+
+        Integer getVehicleId();
+
+        String getLicensePlate();
+
+        String getVehicleStatus();
+
+        String getVehicleTypeName();
+
+        Integer getTotalSeats();
+    }
+
+    interface VehicleLastTripProjection {
+        Integer getVehicleId();
+
+        OffsetDateTime getLatestDepartureTime();
     }
 }

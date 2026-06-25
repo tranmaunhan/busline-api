@@ -7,7 +7,7 @@ import java.util.List;
 public record TripSeatMapResponse(
         Integer tripId,
         OffsetDateTime departureTime,
-        String tripStatus,
+        Integer tripStatus,
         Integer routeId,
         String routeOrigin,
         String routeDestination,

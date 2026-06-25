@@ -5,6 +5,7 @@ import com.busline.tranmaunhan.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -39,7 +40,15 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .exceptionHandling(exception ->
-                        exception.authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        exception
+                                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                                    response.setStatus(403);
+                                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                                    response.getWriter().write("""
+                                            {"status":403,"error":"Forbidden","message":"Ban khong co quyen truy cap tai nguyen nay","path":"%s"}
+                                            """.formatted(request.getRequestURI()));
+                                })
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/locations").permitAll()
@@ -57,11 +66,14 @@ public class SecurityConfig {
                                 "/api/auth/google",
                                 "/api/auth/google/config",
                                 "/api/auth/register",
+                                "/api/admin/auth/login",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/error"
                         ).permitAll()
+
+                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "STAFF")
 
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 

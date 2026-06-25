@@ -8,6 +8,6 @@ public record TripSeatMapItemResponse(
         Integer colIndex,
         String deck,
         String seatType,
-        String status
+        Integer status
 ) {
 }

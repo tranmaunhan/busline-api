@@ -28,6 +28,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +45,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+
+    private static final List<String> ADMIN_AUTHORITIES = List.of("ROLE_ADMIN", "ROLE_STAFF");
 
     private final UsersRepository usersRepository;
     private final RolesRepository rolesRepository;
@@ -62,16 +65,16 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (usersRepository.existsByEmailIgnoreCase(request.email())) {
-            throw new IllegalArgumentException("Email đã tồn tại");
+            throw new IllegalArgumentException("Email da ton tai");
         }
 
         Users user = new Users();
-
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setFullName(request.fullName().trim());
         user.setEmail(request.email().trim());
         user.setPhone(request.phone().trim());
         user.setStatus("ACTIVE");
+
         OffsetDateTime now = OffsetDateTime.now();
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
@@ -88,20 +91,26 @@ public class AuthServiceImpl implements AuthService {
         userRolesRepository.save(userRole);
 
         savedUser.setUserRoles(List.of(userRole));
-        CustomUserDetails userDetails = new CustomUserDetails(savedUser);
-        return buildAuthResponse(userDetails);
+        return buildAuthResponse(new CustomUserDetails(savedUser));
     }
 
     @Override
     public AuthResponse login(LoginRequest request) {
         try {
-            String email = request.email().trim();
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, request.password()));
-            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            return buildAuthResponse(authenticate(request));
+        } catch (org.springframework.security.core.AuthenticationException ex) {
+            throw new BadCredentialsException("Email hoac mat khau khong hop le");
+        }
+    }
+
+    @Override
+    public AuthResponse loginAdmin(LoginRequest request) {
+        try {
+            CustomUserDetails userDetails = authenticate(request);
+            ensureAdminAccess(userDetails);
             return buildAuthResponse(userDetails);
         } catch (org.springframework.security.core.AuthenticationException ex) {
-            throw new BadCredentialsException("Email hoặc mật khẩu không hợp lệ");
+            throw new BadCredentialsException("Email hoac mat khau khong hop le");
         }
     }
 
@@ -114,7 +123,8 @@ public class AuthServiceImpl implements AuthService {
         return new GoogleAuthConfigResponse(
                 true,
                 googleOAuthProperties.getClientId().trim(),
-                googleOAuthProperties.getRedirectUri().trim());
+                googleOAuthProperties.getRedirectUri().trim()
+        );
     }
 
     @Override
@@ -144,32 +154,54 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public UserProfileResponse getCurrentAdminProfile(CustomUserDetails currentUser) {
+        ensureAdminAccess(currentUser);
+        return toUserProfile(currentUser);
+    }
+
+    @Override
     @Transactional
     public MessageResponse changePassword(ChangePasswordRequest request, Integer userId) {
         Users user = usersRepository.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("Khong tim thay thong tin nguoi dung"));
 
-        String currentPassword = request.currentPassword();
-        String newPassword = request.newPassword();
-        String confirmNewPassword = request.confirmNewPassword();
-
-        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Mat khau hien tai khong dung");
         }
 
-        if (!newPassword.equals(confirmNewPassword)) {
+        if (!request.newPassword().equals(request.confirmNewPassword())) {
             throw new IllegalArgumentException("Xac nhan mat khau moi khong khop");
         }
 
-        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+        if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Mat khau moi khong duoc giong mat khau hien tai");
         }
 
-        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         user.setUpdatedAt(OffsetDateTime.now());
         usersRepository.save(user);
 
         return new MessageResponse("Doi mat khau thanh cong");
+    }
+
+    private CustomUserDetails authenticate(LoginRequest request) {
+        String email = request.email().trim();
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(email, request.password())
+        );
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        validateUserStatus(userDetails);
+        return userDetails;
+    }
+
+    private void ensureAdminAccess(CustomUserDetails userDetails) {
+        boolean allowed = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(ADMIN_AUTHORITIES::contains);
+
+        if (!allowed) {
+            throw new IllegalArgumentException("Tai khoan khong co quyen truy cap trang admin");
+        }
     }
 
     private GoogleTokenResponse exchangeGoogleCodeForToken(String code) {
@@ -223,6 +255,7 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(email.trim());
         user.setPhone("");
         user.setStatus("ACTIVE");
+
         OffsetDateTime now = OffsetDateTime.now();
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
@@ -282,7 +315,8 @@ public class AuthServiceImpl implements AuthService {
                 token,
                 "Bearer",
                 jwtTokenProvider.getJwtExpirationMs(),
-                toUserProfile(userDetails));
+                toUserProfile(userDetails)
+        );
     }
 
     private UserProfileResponse toUserProfile(CustomUserDetails userDetails) {
@@ -296,7 +330,8 @@ public class AuthServiceImpl implements AuthService {
                 userDetails.getEmail(),
                 userDetails.getPhone(),
                 userDetails.getStatus(),
-                roles);
+                roles
+        );
     }
 
     private record GoogleTokenResponse(

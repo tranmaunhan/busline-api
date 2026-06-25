@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.busline.tranmaunhan.entity.Trips;
+import com.busline.tranmaunhan.repository.RouteStopRepository;
 import com.busline.tranmaunhan.repository.RouteSegmentPriceRepository;
 import com.busline.tranmaunhan.repository.TripRepository;
 import com.busline.tranmaunhan.repository.TripSeatRepository;
@@ -22,8 +23,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
@@ -34,6 +37,7 @@ import java.util.stream.Collectors;
 public class TripServiceImpl implements TripService {
 
     private static final ZoneId APP_ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final int SEAT_STATUS_AVAILABLE = 0;
     private static final TypeReference<List<String>> ROUTE_STOPS_TYPE = new TypeReference<>() {
     };
     private static final TypeReference<List<TripDetailSeatLayoutItemResponse>> SEAT_LAYOUT_TYPE = new TypeReference<>() {
@@ -41,6 +45,7 @@ public class TripServiceImpl implements TripService {
 
     private final TripRepository tripRepository;
     private final TripSeatRepository tripSeatRepository;
+    private final RouteStopRepository routeStopRepository;
     private final RouteSegmentPriceRepository routeSegmentPriceRepository;
     private final ObjectMapper objectMapper;
 
@@ -75,6 +80,27 @@ public class TripServiceImpl implements TripService {
                         RouteSegmentPriceRepository.RouteSegmentPriceProjection::getPrice,
                         (left, right) -> left,
                         LinkedHashMap::new));
+        Map<String, RouteStopTiming> stopTimingByRouteAndLocation = routeStopRepository
+                .findStopTimingsByRouteIdsAndLocationIds(routeIds, Set.of(pickupLocationId, dropoffLocationId)).stream()
+                .collect(Collectors.toMap(
+                        projection -> buildRouteStopKey(projection.getRouteId(), projection.getLocationId()),
+                        projection -> new RouteStopTiming(
+                                projection.getRouteId(),
+                                projection.getLocationId(),
+                                projection.getLocationName(),
+                                projection.getStopOrder(),
+                                projection.getEstimatedTimeFromStartMinutes()
+                        ),
+                        (left, right) -> left,
+                        HashMap::new
+                ));
+        Map<Integer, Integer> availableSeatsByTripId = tripSeatRepository.countAvailableSeatsByTripIds(tripIds).stream()
+                .collect(Collectors.toMap(
+                        TripSeatRepository.TripAvailableSeatProjection::getTripId,
+                        projection -> projection.getAvailableSeatCount() == null ? 0 : projection.getAvailableSeatCount().intValue(),
+                        (left, right) -> left,
+                        HashMap::new
+                ));
 
         return trips.stream()
                 .map(trip -> {
@@ -88,13 +114,39 @@ public class TripServiceImpl implements TripService {
                         return null;
                     }
 
+                    RouteStopTiming pickupStop = stopTimingByRouteAndLocation.get(buildRouteStopKey(routeId, pickupLocationId));
+                    RouteStopTiming dropoffStop = stopTimingByRouteAndLocation.get(buildRouteStopKey(routeId, dropoffLocationId));
+                    if (pickupStop == null || dropoffStop == null) {
+                        return null;
+                    }
+                    if (pickupStop.stopOrder() == null || dropoffStop.stopOrder() == null
+                            || pickupStop.stopOrder() >= dropoffStop.stopOrder()) {
+                        return null;
+                    }
+
+                    OffsetDateTime tripDepartureTime = toOffsetDateTime(trip.getDepartureTime());
+                    if (tripDepartureTime == null) {
+                        return null;
+                    }
+                    OffsetDateTime pickupTime = tripDepartureTime.plusMinutes(safeMinutes(pickupStop.estimatedTimeFromStartMinutes()));
+                    OffsetDateTime dropoffTime = tripDepartureTime.plusMinutes(safeMinutes(dropoffStop.estimatedTimeFromStartMinutes()));
+
                     return new TripSearchResponse(
                             trip.getTripId(),
-                            toOffsetDateTime(trip.getDepartureTime()),
+                            tripDepartureTime,
+                            pickupTime,
+                            dropoffTime,
                             trip.getRouteOrigin(),
                             trip.getRouteDestination(),
+                            pickupLocationId,
+                            pickupStop.locationName(),
+                            dropoffLocationId,
+                            dropoffStop.locationName(),
                             trip.getLicensePlate(),
                             trip.getVehicleType(),
+                            availableSeatsByTripId.getOrDefault(trip.getTripId(), 0),
+                            Math.max(safeMinutes(dropoffStop.estimatedTimeFromStartMinutes())
+                                    - safeMinutes(pickupStop.estimatedTimeFromStartMinutes()), 0),
                             price);
                 })
                 .filter(Objects::nonNull)
@@ -201,5 +253,22 @@ public class TripServiceImpl implements TripService {
         }
 
         return value.atZone(APP_ZONE_ID).toOffsetDateTime();
+    }
+
+    private String buildRouteStopKey(Integer routeId, Integer locationId) {
+        return routeId + "|" + locationId;
+    }
+
+    private int safeMinutes(Integer value) {
+        return value == null ? 0 : Math.max(value, 0);
+    }
+
+    private record RouteStopTiming(
+            Integer routeId,
+            Integer locationId,
+            String locationName,
+            Integer stopOrder,
+            Integer estimatedTimeFromStartMinutes
+    ) {
     }
 }

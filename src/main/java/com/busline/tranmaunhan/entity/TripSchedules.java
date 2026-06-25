@@ -7,23 +7,23 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.util.List;
 
 @Entity
-@Table(name = "Trips")
+@Table(name = "TripSchedules")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Trips {
+public class TripSchedules {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,14 +39,20 @@ public class Trips {
     private Vehicles vehicle;
 
     @Column(name = "DepartureTime")
-    private OffsetDateTime departureTime;
+    private LocalTime departureTime;
+
+    @Column(name = "StartDate")
+    private LocalDate startDate;
+
+    @Column(name = "EndDate")
+    private LocalDate endDate;
 
     @Column(name = "Status")
     private Integer status;
 
-    @OneToMany(mappedBy = "trip")
-    private List<TripSeats> tripSeats;
+    @Column(name = "CreatedAt")
+    private OffsetDateTime createdAt;
 
-    @OneToMany(mappedBy = "trip")
-    private List<Tickets> tickets;
+    @Column(name = "UpdatedAt")
+    private OffsetDateTime updatedAt;
 }

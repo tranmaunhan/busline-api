@@ -4,8 +4,10 @@ import com.busline.tranmaunhan.config.SepayWebhookProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling
 @EnableConfigurationProperties(SepayWebhookProperties.class)
 public class DemoApplication {
 

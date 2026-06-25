@@ -1,5 +1,6 @@
 package com.busline.tranmaunhan.service.serviceImpl;
 
+import com.busline.tranmaunhan.dto.location.CreateLocationRequest;
 import com.busline.tranmaunhan.dto.location.LocationResponse;
 import com.busline.tranmaunhan.entity.Locations;
 import com.busline.tranmaunhan.repository.LocationsRepository;
@@ -22,6 +23,17 @@ public class LocationServiceImpl implements LocationService {
         return locationsRepository.findAllByOrderByNameAsc().stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public LocationResponse createLocation(CreateLocationRequest request) {
+        Locations location = new Locations();
+        location.setName(request.name().trim());
+        location.setAddress(request.address().trim());
+        location.setType(request.type().trim());
+
+        return toResponse(locationsRepository.save(location));
     }
 
     private LocationResponse toResponse(Locations location) {
