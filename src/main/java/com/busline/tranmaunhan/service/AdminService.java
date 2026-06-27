@@ -28,6 +28,8 @@ public interface AdminService {
 
     List<AdminTripScheduleResponse> getTripSchedules();
 
+    AdminTripScheduleResponse getTripScheduleById(Integer scheduleId);
+
     AdminTripScheduleResponse createTripSchedule(AdminCreateTripScheduleRequest request);
 
     AdminTripScheduleResponse updateTripSchedule(Integer scheduleId, AdminCreateTripScheduleRequest request);

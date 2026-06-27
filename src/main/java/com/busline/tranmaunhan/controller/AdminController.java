@@ -142,6 +142,14 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getTripSchedules());
     }
 
+    @GetMapping("/trip-schedules/{scheduleId}")
+    @Operation(summary = "Lay chi tiet lich chay mau", description = "Lay mot lich chay theo id de phuc vu man hinh chinh sua")
+    @ApiResponse(responseCode = "200", description = "Lay chi tiet lich chay thanh cong")
+    @ApiResponse(responseCode = "404", description = "Khong tim thay lich chay")
+    public ResponseEntity<AdminTripScheduleResponse> getTripScheduleById(@PathVariable @Positive Integer scheduleId) {
+        return ResponseEntity.ok(adminService.getTripScheduleById(scheduleId));
+    }
+
     @PostMapping("/trip-schedules")
     @Operation(summary = "Tao lich chay mau", description = "Tao lich chay theo tuyen, xe, gio chay va khoang ap dung")
     @ApiResponse(responseCode = "201", description = "Tao lich chay thanh cong")

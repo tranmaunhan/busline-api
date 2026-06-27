@@ -493,6 +493,15 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public AdminTripScheduleResponse getTripScheduleById(Integer scheduleId) {
+        TripSchedules tripSchedule = tripScheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new java.util.NoSuchElementException("Khong tim thay lich chay voi id = " + scheduleId));
+
+        return toTripScheduleResponse(tripSchedule);
+    }
+
+    @Override
     @Transactional
     public AdminTripScheduleResponse createTripSchedule(AdminCreateTripScheduleRequest request) {
         validateTripScheduleRequest(request);
