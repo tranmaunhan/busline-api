@@ -10,6 +10,7 @@ import com.busline.tranmaunhan.dto.admin.AdminRouteDetailResponse;
 import com.busline.tranmaunhan.dto.admin.AdminRoutesResponse;
 import com.busline.tranmaunhan.dto.admin.AdminScheduleResponse;
 import com.busline.tranmaunhan.dto.admin.AdminStaffResponse;
+import com.busline.tranmaunhan.dto.admin.AdminTripBookingSeatMapResponse;
 import com.busline.tranmaunhan.dto.admin.AdminTripScheduleResponse;
 import com.busline.tranmaunhan.dto.admin.AdminUpdateVehicleStatusRequest;
 import com.busline.tranmaunhan.dto.admin.AdminUpsertVehicleRequest;
@@ -22,6 +23,8 @@ public interface AdminService {
     AdminDashboardResponse getDashboard();
 
     AdminScheduleResponse getSchedule(LocalDate date, Integer originId, Integer destinationId);
+
+    AdminTripBookingSeatMapResponse getTripBookingSeatMap(Integer tripId, Integer pickupLocationId, Integer dropoffLocationId);
 
     List<AdminTripScheduleResponse> getTripSchedules();
 

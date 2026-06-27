@@ -12,11 +12,17 @@ import java.util.List;
 public class BookingResponse {
 
     private Integer bookingId;
+    private Integer userId;
     private String bookingCode;
 
     private OffsetDateTime bookingTime;
     private Integer status;
     private BigDecimal totalAmount;
+    private String contactName;
+    private String contactPhone;
+    private String contactEmail;
+    private String note;
+    private OffsetDateTime paymentExpiry;
 
     private Integer tripId;
     private OffsetDateTime tripDepartureTime;
@@ -28,5 +34,4 @@ public class BookingResponse {
     private String dropoffLocationName;
 
     private List<TicketResponse> tickets;
-
 }

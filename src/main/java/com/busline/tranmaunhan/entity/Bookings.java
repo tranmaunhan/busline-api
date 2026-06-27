@@ -37,6 +37,21 @@ public class Bookings {
     @Column(name = "BookingCode")
     private String bookingCode;
 
+    @Column(name = "ContactName")
+    private String contactName;
+
+    @Column(name = "ContactPhone")
+    private String contactPhone;
+
+    @Column(name = "ContactEmail")
+    private String contactEmail;
+
+    @Column(name = "Note", columnDefinition = "text")
+    private String note;
+
+    @Column(name = "PaymentExpiredAt")
+    private OffsetDateTime paymentExpiry;
+
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Tickets> tickets = new ArrayList<>();
 

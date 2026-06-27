@@ -10,13 +10,19 @@ import com.busline.tranmaunhan.dto.admin.AdminRouteDetailResponse;
 import com.busline.tranmaunhan.dto.admin.AdminRoutesResponse;
 import com.busline.tranmaunhan.dto.admin.AdminScheduleResponse;
 import com.busline.tranmaunhan.dto.admin.AdminStaffResponse;
+import com.busline.tranmaunhan.dto.admin.AdminTripBookingSeatMapResponse;
 import com.busline.tranmaunhan.dto.admin.AdminTripScheduleResponse;
 import com.busline.tranmaunhan.dto.admin.AdminUpdateVehicleStatusRequest;
 import com.busline.tranmaunhan.dto.admin.AdminUpsertVehicleRequest;
+import com.busline.tranmaunhan.dto.auth.MessageResponse;
+import com.busline.tranmaunhan.dto.booking.BookingResponse;
+import com.busline.tranmaunhan.dto.booking.CreateBookingRequest;
 import com.busline.tranmaunhan.dto.location.CreateLocationRequest;
 import com.busline.tranmaunhan.dto.location.LocationResponse;
 import com.busline.tranmaunhan.service.LocationService;
 import com.busline.tranmaunhan.service.AdminService;
+import com.busline.tranmaunhan.service.BookingService;
+import com.busline.tranmaunhan.service.ExpiredBookingCleanupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,12 +56,22 @@ public class AdminController {
 
     private final AdminService adminService;
     private final LocationService locationService;
+    private final BookingService bookingService;
+    private final ExpiredBookingCleanupService expiredBookingCleanupService;
 
     @GetMapping("/dashboard")
     @Operation(summary = "Lay dashboard admin", description = "Tong hop doanh thu, chuyen xe, booking va canh bao van hanh")
     @ApiResponse(responseCode = "200", description = "Lay dashboard thanh cong")
     public ResponseEntity<AdminDashboardResponse> getDashboard() {
         return ResponseEntity.ok(adminService.getDashboard());
+    }
+
+    @DeleteMapping("/bookings/expired")
+    @Operation(summary = "Xoa booking het han thanh toan", description = "Xoa cac booking pending da qua han thanh toan va mo lai ghe")
+    @ApiResponse(responseCode = "200", description = "Xoa booking het han thanh cong")
+    public ResponseEntity<MessageResponse> deleteExpiredBookings() {
+        int deletedCount = expiredBookingCleanupService.cleanupExpiredPendingBookings();
+        return ResponseEntity.ok(new MessageResponse("Da xoa " + deletedCount + " booking het han thanh toan"));
     }
 
     @GetMapping("/schedule")
@@ -67,6 +83,26 @@ public class AdminController {
             @RequestParam(required = false) @Positive Integer destinationId
     ) {
         return ResponseEntity.ok(adminService.getSchedule(date, originId, destinationId));
+    }
+
+    @GetMapping("/trips/{tripId}/booking-seat-map")
+    @Operation(summary = "Lay so do ghe admin kem thong tin dat cho", description = "Tra ve danh sach ghe, thong tin khach da dat va trang thai thanh toan cho tung ghe")
+    @ApiResponse(responseCode = "200", description = "Lay so do ghe admin thanh cong")
+    public ResponseEntity<AdminTripBookingSeatMapResponse> getTripBookingSeatMap(
+            @PathVariable @Positive Integer tripId,
+            @RequestParam(required = false) @Positive Integer pickupLocationId,
+            @RequestParam(required = false) @Positive Integer dropoffLocationId
+    ) {
+        return ResponseEntity.ok(adminService.getTripBookingSeatMap(tripId, pickupLocationId, dropoffLocationId));
+    }
+
+    @PostMapping("/bookings/guest")
+    @Operation(summary = "Nhan vien tao booking cho khach vang lai", description = "Tao booking guest tu man hinh admin, khong gan booking vao tai khoan nhan vien dang nhap")
+    @ApiResponse(responseCode = "201", description = "Tao booking guest thanh cong")
+    public ResponseEntity<BookingResponse> createGuestBooking(
+            @Valid @RequestBody CreateBookingRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(bookingService.createBooking(request, null));
     }
 
     @GetMapping("/trip-schedules")

@@ -10,6 +10,7 @@ import com.busline.tranmaunhan.dto.admin.AdminRouteDetailResponse;
 import com.busline.tranmaunhan.dto.admin.AdminRoutesResponse;
 import com.busline.tranmaunhan.dto.admin.AdminScheduleResponse;
 import com.busline.tranmaunhan.dto.admin.AdminStaffResponse;
+import com.busline.tranmaunhan.dto.admin.AdminTripBookingSeatMapResponse;
 import com.busline.tranmaunhan.dto.admin.AdminTripScheduleResponse;
 import com.busline.tranmaunhan.dto.admin.AdminUpdateVehicleStatusRequest;
 import com.busline.tranmaunhan.dto.admin.AdminUpsertVehicleRequest;
@@ -40,10 +41,12 @@ import com.busline.tranmaunhan.repository.UsersRepository;
 import com.busline.tranmaunhan.repository.VehicleRepository;
 import com.busline.tranmaunhan.repository.VehicleTypeRepository;
 import com.busline.tranmaunhan.service.AdminService;
+import com.busline.tranmaunhan.service.ExpiredBookingCleanupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -101,6 +104,7 @@ public class AdminServiceImpl implements AdminService {
     private final VehicleRepository vehicleRepository;
     private final VehicleTypeRepository vehicleTypeRepository;
     private final UsersRepository usersRepository;
+    private final ExpiredBookingCleanupService expiredBookingCleanupService;
 
     @Override
     @Transactional(readOnly = true)
@@ -319,6 +323,8 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional(readOnly = true)
     public AdminScheduleResponse getSchedule(LocalDate date, Integer originId, Integer destinationId) {
+        expiredBookingCleanupService.cleanupExpiredPendingBookings();
+
         LocalDate today = LocalDate.now(APP_ZONE);
         LocalDate selectedDate = date == null ? today : date;
         OffsetDateTime start = startOfDay(selectedDate);
@@ -377,6 +383,104 @@ public class AdminServiceImpl implements AdminService {
                         .map(location -> new AdminScheduleResponse.LocationOption(location.getId(), location.getName()))
                         .toList(),
                 columns
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminTripBookingSeatMapResponse getTripBookingSeatMap(
+            Integer tripId,
+            Integer pickupLocationId,
+            Integer dropoffLocationId
+    ) {
+        expiredBookingCleanupService.cleanupExpiredPendingBookings();
+
+        Trips trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new java.util.NoSuchElementException("Khong tim thay chuyen voi id = " + tripId));
+
+        List<RouteStops> routeStops = routeStopRepository.findAllByRouteIdOrderByStopOrderAsc(trip.getRoute().getId());
+        if (routeStops.size() < 2) {
+            throw new IllegalStateException("Tuyen cua chuyen xe chua co du diem dung");
+        }
+
+        BigDecimal segmentPrice = null;
+        if (pickupLocationId != null || dropoffLocationId != null) {
+            if (pickupLocationId == null || dropoffLocationId == null) {
+                throw new IllegalArgumentException("Can chon day du diem don va diem tra");
+            }
+
+            if (pickupLocationId.equals(dropoffLocationId)) {
+                throw new IllegalArgumentException("Diem don va diem tra khong duoc giong nhau");
+            }
+
+            RouteStops pickupStop = routeStops.stream()
+                    .filter(stop -> stop.getLocation() != null && Objects.equals(stop.getLocation().getId(), pickupLocationId))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Diem don khong thuoc tuyen xe"));
+
+            RouteStops dropoffStop = routeStops.stream()
+                    .filter(stop -> stop.getLocation() != null && Objects.equals(stop.getLocation().getId(), dropoffLocationId))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Diem tra khong thuoc tuyen xe"));
+
+            if (safeInt(pickupStop.getStopOrder()) >= safeInt(dropoffStop.getStopOrder())) {
+                throw new IllegalArgumentException("Diem don phai dung truoc diem tra tren tuyen");
+            }
+
+            segmentPrice = routeSegmentPriceRepository.findPriceByRouteAndLocations(
+                            trip.getRoute().getId(),
+                            pickupLocationId,
+                            dropoffLocationId)
+                    .orElseThrow(() -> new IllegalArgumentException("Khong tim thay gia chang cho cap diem da chon"));
+        }
+
+        List<AdminTripBookingSeatMapResponse.StopOption> stopOptions = routeStops.stream()
+                .map(stop -> new AdminTripBookingSeatMapResponse.StopOption(
+                        stop.getLocation() == null ? null : stop.getLocation().getId(),
+                        stop.getLocation() == null ? "Chua ro diem dung" : defaultString(stop.getLocation().getName(), "Chua ro diem dung"),
+                        stop.getStopOrder(),
+                        stop.getEstimatedTimeFromStartMinutes()
+                ))
+                .toList();
+
+        List<AdminTripBookingSeatMapResponse.SeatItem> seatItems = tripSeatRepository.findAdminSeatMapByTripId(tripId).stream()
+                .map(seat -> new AdminTripBookingSeatMapResponse.SeatItem(
+                        seat.getTripSeatId(),
+                        seat.getSeatTemplateId(),
+                        seat.getSeatCode(),
+                        seat.getRowIndex(),
+                        seat.getColIndex(),
+                        seat.getDeck(),
+                        seat.getSeatType(),
+                        seat.getStatus(),
+                        seat.getBookingId(),
+                        seat.getBookingCode(),
+                        seat.getBookingStatus(),
+                        defaultString(seat.getContactName(), null),
+                        defaultString(seat.getContactPhone(), null)
+                ))
+                .toList();
+
+        return new AdminTripBookingSeatMapResponse(
+                trip.getId(),
+                trip.getDepartureTime(),
+                trip.getStatus(),
+                trip.getRoute().getId(),
+                trip.getRoute().getOrigin() == null ? "Chua ro diem di" : defaultString(trip.getRoute().getOrigin().getName(), "Chua ro diem di"),
+                trip.getRoute().getDestination() == null ? "Chua ro diem den" : defaultString(trip.getRoute().getDestination().getName(), "Chua ro diem den"),
+                trip.getVehicle() == null ? null : trip.getVehicle().getId(),
+                trip.getVehicle() == null ? "Chua gan xe" : defaultString(trip.getVehicle().getLicensePlate(), "Chua gan xe"),
+                trip.getVehicle() == null || trip.getVehicle().getVehicleType() == null
+                        ? "Chua ro loai xe"
+                        : defaultString(trip.getVehicle().getVehicleType().getTypeName(), "Chua ro loai xe"),
+                trip.getVehicle() == null || trip.getVehicle().getVehicleType() == null
+                        ? seatItems.size()
+                        : safeInt(trip.getVehicle().getVehicleType().getTotalSeats()),
+                pickupLocationId,
+                dropoffLocationId,
+                segmentPrice,
+                stopOptions,
+                seatItems
         );
     }
 
@@ -1191,13 +1295,37 @@ public class AdminServiceImpl implements AdminService {
         return new AdminDashboardResponse.RecentBooking(
                 booking.getId(),
                 booking.getBookingCode(),
-                booking.getUser() == null ? "Khach le" : defaultString(booking.getUser().getFullName(), "Khach le"),
+                resolveRecentBookingCustomer(booking),
                 route,
                 seats,
                 defaultAmount(booking.getTotalAmount()),
                 mapBookingStatus(booking.getStatus()),
                 booking.getBookingTime() == null ? "--:--" : booking.getBookingTime().atZoneSameInstant(APP_ZONE).format(TIME_FORMATTER)
         );
+    }
+
+    private String resolveRecentBookingCustomer(Bookings booking) {
+        if (booking == null) {
+            return "Khach le";
+        }
+
+        if (StringUtils.hasText(booking.getContactName()) && StringUtils.hasText(booking.getContactPhone())) {
+            return booking.getContactName().trim() + " - " + booking.getContactPhone().trim();
+        }
+
+        if (StringUtils.hasText(booking.getContactName())) {
+            return booking.getContactName().trim();
+        }
+
+        if (booking.getUser() != null && StringUtils.hasText(booking.getUser().getFullName())) {
+            return booking.getUser().getFullName().trim();
+        }
+
+        if (StringUtils.hasText(booking.getContactPhone())) {
+            return booking.getContactPhone().trim();
+        }
+
+        return "Khach le";
     }
 
     private List<AdminDashboardResponse.AlertItem> buildAlerts(

@@ -29,6 +29,31 @@ public interface TripSeatRepository extends JpaRepository<TripSeats, Integer> {
             """)
     List<TripSeatMapProjection> findSeatMapByTripId(@Param("tripId") Integer tripId);
 
+    @Query("""
+            SELECT
+                ts.id AS tripSeatId,
+                st.id AS seatTemplateId,
+                st.seatCode AS seatCode,
+                st.rowIndex AS rowIndex,
+                st.colIndex AS colIndex,
+                st.deck AS deck,
+                st.seatType AS seatType,
+                ts.status AS status,
+                b.id AS bookingId,
+                b.bookingCode AS bookingCode,
+                b.status AS bookingStatus,
+                COALESCE(b.contactName, u.fullName) AS contactName,
+                COALESCE(b.contactPhone, u.phone) AS contactPhone
+            FROM TripSeats ts
+            JOIN ts.seatTemplate st
+            LEFT JOIN Tickets t ON t.tripSeat = ts
+            LEFT JOIN t.booking b
+            LEFT JOIN b.user u
+            WHERE ts.trip.id = :tripId
+            ORDER BY st.deck, st.rowIndex, st.colIndex, st.seatCode
+            """)
+    List<AdminTripSeatMapProjection> findAdminSeatMapByTripId(@Param("tripId") Integer tripId);
+
     /**
      * Lấy danh sách ghế theo id với PESSIMISTIC WRITE LOCK (SELECT FOR UPDATE).
      * Dùng khi đặt vé để đảm bảo không có race condition.
@@ -72,5 +97,33 @@ public interface TripSeatRepository extends JpaRepository<TripSeats, Integer> {
         Integer getTripId();
 
         Long getAvailableSeatCount();
+    }
+
+    interface AdminTripSeatMapProjection {
+        Integer getTripSeatId();
+
+        Integer getSeatTemplateId();
+
+        String getSeatCode();
+
+        Integer getRowIndex();
+
+        Integer getColIndex();
+
+        String getDeck();
+
+        String getSeatType();
+
+        Integer getStatus();
+
+        Integer getBookingId();
+
+        String getBookingCode();
+
+        Integer getBookingStatus();
+
+        String getContactName();
+
+        String getContactPhone();
     }
 }

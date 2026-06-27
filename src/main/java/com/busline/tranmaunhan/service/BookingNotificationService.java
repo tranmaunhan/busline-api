@@ -1,11 +1,11 @@
 package com.busline.tranmaunhan.service;
 
 import com.busline.tranmaunhan.dto.booking.BookingResponse;
-import com.busline.tranmaunhan.entity.Users;
+import com.busline.tranmaunhan.entity.Bookings;
 
 public interface BookingNotificationService {
 
-    void sendBookingPendingNotification(Users user, BookingResponse bookingResponse);
+    void sendBookingPendingNotification(Bookings booking, BookingResponse bookingResponse);
 
-    void sendBookingConfirmedNotification(Users user, BookingResponse bookingResponse);
+    void sendBookingConfirmedNotification(Bookings booking, BookingResponse bookingResponse);
 }

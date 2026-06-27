@@ -20,10 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class SepayWebhookServiceTest {
 
@@ -83,20 +83,28 @@ class SepayWebhookServiceTest {
                 eq(1),
                 eq(BigDecimal.valueOf(150000L))
         )).thenReturn(1);
+
         Bookings booking = new Bookings();
         booking.setId(9);
         booking.setBookingCode("SAIGONSTBK9");
         booking.setBookingTime(OffsetDateTime.now());
         booking.setStatus(1);
+
         when(bookingRepository.findByBookingCodeWithDetails("SAIGONSTBK9"))
                 .thenReturn(Optional.of(booking));
         when(bookingResponseMapper.toBookingResponse(booking))
                 .thenReturn(new BookingResponse(
                         9,
+                        null,
                         "SAIGONSTBK9",
                         OffsetDateTime.now(),
                         1,
                         BigDecimal.valueOf(150000L),
+                        "Khach le",
+                        "0900000000",
+                        "guest@example.com",
+                        null,
+                        OffsetDateTime.now().plusHours(1),
                         1,
                         OffsetDateTime.now(),
                         "A",

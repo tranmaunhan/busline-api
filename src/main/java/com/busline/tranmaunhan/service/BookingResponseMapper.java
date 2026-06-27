@@ -40,10 +40,16 @@ public class BookingResponseMapper {
 
         return new BookingResponse(
                 booking.getId(),
+                booking.getUser() == null ? null : booking.getUser().getId(),
                 booking.getBookingCode(),
                 booking.getBookingTime(),
                 booking.getStatus(),
                 booking.getTotalAmount(),
+                booking.getContactName(),
+                booking.getContactPhone(),
+                booking.getContactEmail(),
+                booking.getNote(),
+                booking.getPaymentExpiry(),
                 trip.getId(),
                 trip.getDepartureTime(),
                 trip.getRoute().getOrigin().getName(),

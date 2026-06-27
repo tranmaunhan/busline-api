@@ -40,14 +40,13 @@ public class BookingController {
     @Operation(
             summary = "Dat ve (lock ghe cho thanh toan)",
             description = """
-                    Tao booking moi cho nguoi dung da dang nhap.
+                    Tao booking moi cho nguoi dung da dang nhap hoac khach vang lai.
                     He thong se:
                     - Kiem tra ghe con trong (AVAILABLE)
                     - Lock ghe (chuyen sang LOCKED) bang SELECT FOR UPDATE
                     - Tao Booking voi trang thai PENDING
                     - Tao Ticket cho tung ghe da chon
-                    """,
-            security = @SecurityRequirement(name = "bearerAuth")
+                    """
     )
     @ApiResponse(responseCode = "201", description = "Dat ve thanh cong, ghe da duoc lock")
     @ApiResponse(responseCode = "400", description = "Du lieu khong hop le hoac ghe khong con trong",
@@ -60,7 +59,9 @@ public class BookingController {
             @Valid @RequestBody CreateBookingRequest request,
             @AuthenticationPrincipal CustomUserDetails currentUser
     ) {
-        BookingResponse response = bookingService.createBooking(request, currentUser.getId());
+        BookingResponse response = bookingService.createBooking(
+                request,
+                currentUser == null ? null : currentUser.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

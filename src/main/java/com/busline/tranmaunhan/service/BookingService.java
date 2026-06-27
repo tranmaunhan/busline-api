@@ -12,7 +12,7 @@ public interface BookingService {
      * Tao booking moi: lock ghe da chon, tao Booking + Tickets.
      *
      * @param request thong tin dat ve tu client
-     * @param userId id cua user dang dang nhap (lay tu JWT)
+     * @param userId id cua user dang dang nhap, co the null voi khach vang lai
      * @return BookingResponse chua chi tiet booking vua tao
      */
     BookingResponse createBooking(CreateBookingRequest request, Integer userId);

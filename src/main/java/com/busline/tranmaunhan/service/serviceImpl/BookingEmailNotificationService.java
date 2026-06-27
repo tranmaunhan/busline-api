@@ -3,7 +3,7 @@ package com.busline.tranmaunhan.service.serviceImpl;
 import com.busline.tranmaunhan.config.EmailNotificationProperties;
 import com.busline.tranmaunhan.dto.booking.BookingResponse;
 import com.busline.tranmaunhan.dto.booking.TicketResponse;
-import com.busline.tranmaunhan.entity.Users;
+import com.busline.tranmaunhan.entity.Bookings;
 import com.busline.tranmaunhan.service.BookingNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.text.NumberFormat;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -26,260 +27,203 @@ import java.util.stream.Collectors;
 public class BookingEmailNotificationService implements BookingNotificationService {
 
     private static final Locale VIETNAM_LOCALE = new Locale("vi", "VN");
-
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(
-            "HH:mm 'ngày' dd/MM/yyyy",
+            "HH:mm 'ngay' dd/MM/yyyy",
             VIETNAM_LOCALE);
-
     private static final NumberFormat CURRENCY_FORMATTER = NumberFormat.getCurrencyInstance(VIETNAM_LOCALE);
-
     private static final String BOOKING_LOOKUP_URL = "https://aihost.io.vn/booking-lookup";
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final EmailNotificationProperties emailNotificationProperties;
 
     @Override
-    public void sendBookingPendingNotification(
-            Users user,
-            BookingResponse bookingResponse) {
-
+    public void sendBookingPendingNotification(Bookings booking, BookingResponse bookingResponse) {
         String content = """
-                Xin chào %s,
+                Xin chao %s,
 
-                Cảm ơn bạn đã lựa chọn SaigonST BusLine.
+                Cam on ban da lua chon SaigonST BusLine.
 
-                Chúng tôi xin xác nhận yêu cầu đặt chỗ của bạn đã được ghi nhận thành công trên hệ thống.
-
-                ==================================================
-
-                THÔNG TIN ĐẶT CHỖ
+                Yeu cau dat cho cua ban da duoc ghi nhan thanh cong tren he thong.
 
                 ==================================================
-
-                Mã đặt chỗ: %s
-
-                Tuyến đường: %s → %s
-
-                Điểm đón: %s
-
-                Điểm trả: %s
-
-                Thời gian khởi hành: %s
-
-                Ghế đã chọn: %s
-
-                Tổng tiền tạm tính: %s
-
+                THONG TIN DAT CHO
                 ==================================================
 
-                TRẠNG THÁI
+                Ma dat cho: %s
+                Tuyen duong: %s -> %s
+                Diem don: %s
+                Diem tra: %s
+                Thoi gian khoi hanh: %s
+                Ghe da chon: %s
+                Tong tien tam tinh: %s
+                Nguoi lien he: %s
+                So dien thoai: %s
+                Email nhan ve: %s
+                Han thanh toan: %s
+                Ghi chu: %s
 
                 ==================================================
+                TRANG THAI
+                ==================================================
 
-                ⏳ Đang chờ thanh toán
+                Don dang cho thanh toan.
 
-                Để hoàn tất việc đặt vé, vui lòng truy cập:
-
+                Ban co the tra cuu hoac tiep tuc thanh toan tai:
                 %s
 
-                Tại đây bạn có thể:
+                Neu qua han thanh toan, he thong se tu dong xoa don va mo lai ghe.
 
-                • Thanh toán đơn đặt chỗ
-                • Kiểm tra trạng thái thanh toán
-                • Tra cứu thông tin vé
-                • Theo dõi tình trạng đặt vé
-
-                Lưu ý:
-                Đơn đặt chỗ chỉ được giữ trong thời gian quy định.
-                Nếu không hoàn tất thanh toán đúng hạn, hệ thống có thể tự động hủy giữ chỗ.
-
-                Cảm ơn bạn đã sử dụng dịch vụ của SaigonST BusLine.
-
-                Trân trọng,
-
+                Tran trong,
                 SaigonST BusLine
-                Hệ thống đặt vé xe khách trực tuyến
-                https://aihost.io.vn
                 """
                 .formatted(
-                        resolveDisplayName(user),
+                        resolveDisplayName(booking),
                         bookingResponse.getBookingCode(),
                         bookingResponse.getRouteOrigin(),
                         bookingResponse.getRouteDestination(),
                         bookingResponse.getPickupLocationName(),
                         bookingResponse.getDropoffLocationName(),
-                        DATE_TIME_FORMATTER.format(
-                                bookingResponse.getTripDepartureTime()),
+                        formatDateTime(bookingResponse.getTripDepartureTime()),
                         joinSeatCodes(bookingResponse.getTickets()),
-                        formatCurrency(
-                                bookingResponse.getTotalAmount()),
+                        formatCurrency(bookingResponse.getTotalAmount()),
+                        defaultText(booking.getContactName()),
+                        defaultText(booking.getContactPhone()),
+                        defaultText(resolveRecipientEmail(booking)),
+                        formatDateTime(booking.getPaymentExpiry()),
+                        defaultText(booking.getNote()),
                         BOOKING_LOOKUP_URL);
 
         sendEmail(
-                user,
+                booking,
                 bookingResponse,
-                "🚌 Giữ chỗ thành công - " +
-                        bookingResponse.getBookingCode(),
+                "Giu cho thanh cong - " + bookingResponse.getBookingCode(),
                 content);
     }
 
     @Override
-    public void sendBookingConfirmedNotification(
-            Users user,
-            BookingResponse bookingResponse) {
-
+    public void sendBookingConfirmedNotification(Bookings booking, BookingResponse bookingResponse) {
         String content = """
-                Xin chào %s,
+                Xin chao %s,
 
-                SaigonST BusLine xin chúc mừng!
-
-                Thanh toán của bạn đã được xác nhận thành công và vé xe đã được phát hành.
+                Thanh toan cua ban da duoc xac nhan thanh cong va ve xe da duoc phat hanh.
 
                 ==================================================
-
-                THÔNG TIN VÉ
-
+                THONG TIN VE
                 ==================================================
 
-                Mã đặt vé: %s
+                Ma dat ve: %s
+                Tuyen duong: %s -> %s
+                Diem don: %s
+                Diem tra: %s
+                Thoi gian khoi hanh: %s
+                Ghe da dat: %s
+                Tong tien da thanh toan: %s
+                Nguoi lien he: %s
+                So dien thoai: %s
+                Email nhan ve: %s
+                Ghi chu: %s
 
-                Tuyến đường: %s → %s
-
-                Điểm đón: %s
-
-                Điểm trả: %s
-
-                Thời gian khởi hành: %s
-
-                Ghế đã đặt: %s
-
-                Tổng tiền đã thanh toán: %s
-
-                ==================================================
-
-                TRẠNG THÁI
-
-                ==================================================
-
-                ✅ Đặt vé thành công
-
-                Bạn có thể tra cứu thông tin vé bất cứ lúc nào tại:
-
+                Ban co the tra cuu thong tin ve tai:
                 %s
 
-                Tại đây bạn có thể:
-
-                • Xem lại thông tin vé
-                • Kiểm tra trạng thái chuyến đi
-                • Tra cứu bằng mã đặt vé hoặc số điện thoại
-                • Theo dõi lịch trình khởi hành
-
-                Vui lòng có mặt tại điểm đón trước giờ khởi hành từ 15 đến 30 phút.
-
-                Khi lên xe, vui lòng cung cấp:
-
-                • Mã đặt vé
-                hoặc
-                • Số điện thoại đặt vé
-
-                Chúc bạn có một chuyến đi an toàn và thuận lợi.
-
-                Trân trọng,
-
+                Tran trong,
                 SaigonST BusLine
-                Hệ thống đặt vé xe khách trực tuyến
-                https://aihost.io.vn
                 """
                 .formatted(
-                        resolveDisplayName(user),
+                        resolveDisplayName(booking),
                         bookingResponse.getBookingCode(),
                         bookingResponse.getRouteOrigin(),
                         bookingResponse.getRouteDestination(),
                         bookingResponse.getPickupLocationName(),
                         bookingResponse.getDropoffLocationName(),
-                        DATE_TIME_FORMATTER.format(
-                                bookingResponse.getTripDepartureTime()),
+                        formatDateTime(bookingResponse.getTripDepartureTime()),
                         joinSeatCodes(bookingResponse.getTickets()),
-                        formatCurrency(
-                                bookingResponse.getTotalAmount()),
+                        formatCurrency(bookingResponse.getTotalAmount()),
+                        defaultText(booking.getContactName()),
+                        defaultText(booking.getContactPhone()),
+                        defaultText(resolveRecipientEmail(booking)),
+                        defaultText(booking.getNote()),
                         BOOKING_LOOKUP_URL);
 
         sendEmail(
-                user,
+                booking,
                 bookingResponse,
-                "🎫 Đặt vé thành công - " +
-                        bookingResponse.getBookingCode(),
+                "Dat ve thanh cong - " + bookingResponse.getBookingCode(),
                 content);
     }
 
     private void sendEmail(
-            Users user,
+            Bookings booking,
             BookingResponse bookingResponse,
             String subject,
-            String body) {
-
-        if (!emailNotificationProperties.canSendTo(user.getEmail())) {
+            String body
+    ) {
+        String recipientEmail = resolveRecipientEmail(booking);
+        if (!emailNotificationProperties.canSendTo(recipientEmail)) {
             log.info(
-                    "Bỏ qua gửi email booking {} vì email không hợp lệ hoặc mail chưa được cấu hình",
+                    "Bo qua gui email booking {} vi email khong hop le hoac mail chua duoc cau hinh",
                     bookingResponse.getBookingCode());
             return;
         }
 
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
-
         if (mailSender == null) {
-            log.warn(
-                    "JavaMailSender chưa được cấu hình");
+            log.warn("JavaMailSender chua duoc cau hinh");
             return;
         }
 
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-
-            message.setTo(user.getEmail());
+            message.setTo(recipientEmail);
             message.setSubject(subject);
             message.setText(body);
 
-            if (StringUtils.hasText(
-                    emailNotificationProperties.getFromAddress())) {
-                message.setFrom(
-                        emailNotificationProperties.getFromAddress());
+            if (StringUtils.hasText(emailNotificationProperties.getFromAddress())) {
+                message.setFrom(emailNotificationProperties.getFromAddress());
             }
 
             mailSender.send(message);
-
-            log.info(
-                    "Đã gửi email booking {} tới {}",
-                    bookingResponse.getBookingCode(),
-                    user.getEmail());
-
+            log.info("Da gui email booking {} toi {}", bookingResponse.getBookingCode(), recipientEmail);
         } catch (MailException ex) {
-
             log.warn(
-                    "Gửi email thông báo booking {} thất bại: {}",
+                    "Gui email thong bao booking {} that bai: {}",
                     bookingResponse.getBookingCode(),
                     ex.getMessage());
         }
     }
 
-    private String resolveDisplayName(Users user) {
-
-        if (StringUtils.hasText(user.getFullName())) {
-            return user.getFullName();
+    private String resolveDisplayName(Bookings booking) {
+        if (StringUtils.hasText(booking.getContactName())) {
+            return booking.getContactName().trim();
         }
 
-        if (StringUtils.hasText(user.getEmail())) {
-            return user.getEmail();
+        if (booking.getUser() != null && StringUtils.hasText(booking.getUser().getFullName())) {
+            return booking.getUser().getFullName().trim();
         }
 
-        return "Quý khách";
+        String recipientEmail = resolveRecipientEmail(booking);
+        if (StringUtils.hasText(recipientEmail)) {
+            return recipientEmail;
+        }
+
+        return "Quy khach";
     }
 
-    private String joinSeatCodes(
-            List<TicketResponse> tickets) {
+    private String resolveRecipientEmail(Bookings booking) {
+        if (StringUtils.hasText(booking.getContactEmail())) {
+            return booking.getContactEmail().trim();
+        }
 
+        if (booking.getUser() != null && StringUtils.hasText(booking.getUser().getEmail())) {
+            return booking.getUser().getEmail().trim();
+        }
+
+        return null;
+    }
+
+    private String joinSeatCodes(List<TicketResponse> tickets) {
         if (tickets == null || tickets.isEmpty()) {
-            return "Chưa có thông tin";
+            return "Chua co thong tin";
         }
 
         return tickets.stream()
@@ -289,12 +233,23 @@ public class BookingEmailNotificationService implements BookingNotificationServi
     }
 
     private String formatCurrency(Number amount) {
-
         if (amount == null) {
-            return "0 ₫";
+            return "0 VND";
         }
-
         return CURRENCY_FORMATTER.format(amount);
     }
 
+    private String formatDateTime(OffsetDateTime value) {
+        if (value == null) {
+            return "Chua xac dinh";
+        }
+        return DATE_TIME_FORMATTER.format(value);
+    }
+
+    private String defaultText(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "Khong co";
+        }
+        return value.trim();
+    }
 }

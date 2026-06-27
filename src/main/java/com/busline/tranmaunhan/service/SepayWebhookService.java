@@ -123,7 +123,7 @@ public class SepayWebhookService {
     private void notifyBookingConfirmed(Bookings booking) {
         try {
             BookingResponse response = bookingResponseMapper.toBookingResponse(booking);
-            bookingNotificationService.sendBookingConfirmedNotification(booking.getUser(), response);
+            bookingNotificationService.sendBookingConfirmedNotification(booking, response);
             log.info("Sent confirmed notification for bookingCode={}", booking.getBookingCode());
         } catch (Exception exception) {
             log.error("Failed to send confirmed notification for bookingCode={}", booking.getBookingCode(), exception);

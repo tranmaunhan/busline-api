@@ -14,6 +14,7 @@ import com.busline.tranmaunhan.repository.TripSeatRepository;
 import com.busline.tranmaunhan.repository.UsersRepository;
 import com.busline.tranmaunhan.service.BookingNotificationService;
 import com.busline.tranmaunhan.service.BookingResponseMapper;
+import com.busline.tranmaunhan.service.ExpiredBookingCleanupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -32,14 +33,12 @@ import static org.mockito.Mockito.when;
 class BookingServiceImplTest {
 
     private BookingRepository bookingRepository;
-    private TicketRepository ticketRepository;
     private TripSeatRepository tripSeatRepository;
     private BookingServiceImpl bookingService;
 
     @BeforeEach
     void setUp() {
         bookingRepository = mock(BookingRepository.class);
-        ticketRepository = mock(TicketRepository.class);
         tripSeatRepository = mock(TripSeatRepository.class);
 
         bookingService = new BookingServiceImpl(
@@ -49,7 +48,8 @@ class BookingServiceImplTest {
                 mock(RouteStopRepository.class),
                 mock(RouteSegmentPriceRepository.class),
                 bookingRepository,
-                ticketRepository,
+                mock(TicketRepository.class),
+                mock(ExpiredBookingCleanupService.class),
                 mock(BookingNotificationService.class),
                 mock(BookingResponseMapper.class)
         );

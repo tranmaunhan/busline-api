@@ -55,6 +55,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/trips/search").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/trips/*/details").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/trips/*/seat-map").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/bookings/lookup").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/bookings/*/status").permitAll()
                         .requestMatchers(HttpMethod.GET, "/bookings/*/status").permitAll()

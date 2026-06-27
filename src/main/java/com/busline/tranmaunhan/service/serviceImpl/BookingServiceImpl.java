@@ -1,14 +1,13 @@
 package com.busline.tranmaunhan.service.serviceImpl;
 
+import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.booking.BookingResponse;
 import com.busline.tranmaunhan.dto.booking.CreateBookingRequest;
-import com.busline.tranmaunhan.dto.booking.TicketResponse;
-import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.entity.Bookings;
 import com.busline.tranmaunhan.entity.RouteStops;
 import com.busline.tranmaunhan.entity.Tickets;
-import com.busline.tranmaunhan.entity.Trips;
 import com.busline.tranmaunhan.entity.TripSeats;
+import com.busline.tranmaunhan.entity.Trips;
 import com.busline.tranmaunhan.entity.Users;
 import com.busline.tranmaunhan.repository.BookingRepository;
 import com.busline.tranmaunhan.repository.RouteSegmentPriceRepository;
@@ -20,6 +19,7 @@ import com.busline.tranmaunhan.repository.UsersRepository;
 import com.busline.tranmaunhan.service.BookingNotificationService;
 import com.busline.tranmaunhan.service.BookingResponseMapper;
 import com.busline.tranmaunhan.service.BookingService;
+import com.busline.tranmaunhan.service.ExpiredBookingCleanupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +39,7 @@ public class BookingServiceImpl implements BookingService {
     private static final Integer BOOKING_STATUS_CONFIRMED = 1;
     private static final Integer SEAT_STATUS_AVAILABLE = 0;
     private static final Integer SEAT_STATUS_LOCKED = 1;
+    private static final int DEFAULT_PAYMENT_HOLD_HOURS = 24;
 
     private final UsersRepository usersRepository;
     private final TripRepository tripRepository;
@@ -47,12 +48,15 @@ public class BookingServiceImpl implements BookingService {
     private final RouteSegmentPriceRepository routeSegmentPriceRepository;
     private final BookingRepository bookingRepository;
     private final TicketRepository ticketRepository;
+    private final ExpiredBookingCleanupService expiredBookingCleanupService;
     private final BookingNotificationService bookingNotificationService;
     private final BookingResponseMapper bookingResponseMapper;
 
     @Override
     @Transactional
     public BookingResponse createBooking(CreateBookingRequest request, Integer userId) {
+        expiredBookingCleanupService.cleanupExpiredPendingBookings();
+
         if (request.getPickupLocationId().equals(request.getDropoffLocationId())) {
             throw new IllegalArgumentException("Diem don va diem tra khong duoc giong nhau");
         }
@@ -61,12 +65,16 @@ public class BookingServiceImpl implements BookingService {
             throw new IllegalArgumentException("Vui long chon it nhat mot ghe");
         }
 
-        Users user = usersRepository.findById(userId)
-                .orElseThrow(() -> new NoSuchElementException("Khong tim thay thong tin nguoi dung"));
-
+        Users user = resolveBookingUser(userId);
         Trips trip = tripRepository.findById(request.getTripId())
                 .orElseThrow(() -> new NoSuchElementException(
                         "Khong tim thay chuyen xe voi id = " + request.getTripId()));
+
+        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime paymentExpiry = normalizePaymentExpiry(
+                request.getPaymentExpiry(),
+                trip.getDepartureTime(),
+                now);
 
         List<Integer> sortedSeatIds = request.getTripSeatIds().stream()
                 .distinct()
@@ -74,7 +82,6 @@ public class BookingServiceImpl implements BookingService {
                 .toList();
 
         List<TripSeats> seats = tripSeatRepository.findByIdInWithLock(sortedSeatIds);
-
         if (seats.size() != sortedSeatIds.size()) {
             Set<Integer> foundIds = seats.stream()
                     .map(TripSeats::getId)
@@ -130,12 +137,16 @@ public class BookingServiceImpl implements BookingService {
 
         Bookings booking = new Bookings();
         booking.setUser(user);
-        booking.setBookingTime(OffsetDateTime.now());
+        booking.setBookingTime(now);
         booking.setStatus(BOOKING_STATUS_PENDING);
         booking.setTotalAmount(totalAmount);
+        booking.setContactName(normalizeRequiredField(request.getContactName(), "contactName"));
+        booking.setContactPhone(normalizeRequiredField(request.getContactPhone(), "contactPhone"));
+        booking.setContactEmail(normalizeRequiredField(request.getContactEmail(), "contactEmail"));
+        booking.setNote(normalizeOptionalField(request.getNote()));
+        booking.setPaymentExpiry(paymentExpiry);
 
         Bookings savedBooking = bookingRepository.saveAndFlush(booking);
-
         String bookingCode = generateBookingCode(savedBooking.getId());
         savedBooking.setBookingCode(bookingCode);
         savedBooking = bookingRepository.saveAndFlush(savedBooking);
@@ -156,7 +167,7 @@ public class BookingServiceImpl implements BookingService {
         tripSeatRepository.saveAll(seats);
 
         BookingResponse response = bookingResponseMapper.toBookingResponse(savedBooking);
-        bookingNotificationService.sendBookingPendingNotification(user, response);
+        bookingNotificationService.sendBookingPendingNotification(savedBooking, response);
         return response;
     }
 
@@ -178,17 +189,19 @@ public class BookingServiceImpl implements BookingService {
         Bookings savedBooking = bookingRepository.saveAndFlush(booking);
 
         BookingResponse response = bookingResponseMapper.toBookingResponse(savedBooking);
-        bookingNotificationService.sendBookingConfirmedNotification(savedBooking.getUser(), response);
+        bookingNotificationService.sendBookingConfirmedNotification(savedBooking, response);
         return response;
     }
 
     @Override
     @Transactional(readOnly = true)
     public BookingResponse getBookingByCodeAndPhone(String bookingCode, String phone) {
+        expiredBookingCleanupService.cleanupExpiredPendingBookings();
+
         String normalizedBookingCode = normalizeRequiredField(bookingCode, "bookingCode");
         String normalizedPhone = normalizeRequiredField(phone, "phone");
 
-        Bookings booking = bookingRepository.findByBookingCodeAndUserPhoneWithDetails(
+        Bookings booking = bookingRepository.findByBookingCodeAndContactPhoneWithDetails(
                         normalizedBookingCode,
                         normalizedPhone)
                 .orElseThrow(() -> new NoSuchElementException("Khong tim thay booking voi thong tin da cung cap"));
@@ -199,6 +212,8 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public List<BookingResponse> getBookingsByUserId(Integer userId) {
+        expiredBookingCleanupService.cleanupExpiredPendingBookings();
+
         if (!usersRepository.existsById(userId)) {
             throw new NoSuchElementException("Khong tim thay thong tin nguoi dung");
         }
@@ -241,11 +256,50 @@ public class BookingServiceImpl implements BookingService {
         return new MessageResponse("Huy booking thanh cong");
     }
 
+    private Users resolveBookingUser(Integer userId) {
+        if (userId == null) {
+            return null;
+        }
+
+        return usersRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("Khong tim thay thong tin nguoi dung"));
+    }
+
     private String normalizeRequiredField(String value, String fieldName) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(fieldName + " khong duoc de trong");
         }
         return value.trim();
+    }
+
+    private String normalizeOptionalField(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private OffsetDateTime normalizePaymentExpiry(
+            OffsetDateTime requestedPaymentExpiry,
+            OffsetDateTime tripDepartureTime,
+            OffsetDateTime bookingTime
+    ) {
+        OffsetDateTime fallbackPaymentExpiry = bookingTime.plusHours(DEFAULT_PAYMENT_HOLD_HOURS);
+        OffsetDateTime normalizedPaymentExpiry = requestedPaymentExpiry == null
+                ? fallbackPaymentExpiry
+                : requestedPaymentExpiry;
+
+        if (!normalizedPaymentExpiry.isAfter(bookingTime)) {
+            throw new IllegalArgumentException("paymentExpiry phai lon hon thoi diem dat ve");
+        }
+
+        if (tripDepartureTime != null && normalizedPaymentExpiry.isAfter(tripDepartureTime)) {
+            throw new IllegalArgumentException("paymentExpiry khong duoc sau gio khoi hanh");
+        }
+
+        return normalizedPaymentExpiry;
     }
 
     private String generateBookingCode(Integer bookingId) {

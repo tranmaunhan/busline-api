@@ -13,6 +13,7 @@ import com.busline.tranmaunhan.repository.RouteStopRepository;
 import com.busline.tranmaunhan.repository.RouteSegmentPriceRepository;
 import com.busline.tranmaunhan.repository.TripRepository;
 import com.busline.tranmaunhan.repository.TripSeatRepository;
+import com.busline.tranmaunhan.service.ExpiredBookingCleanupService;
 import com.busline.tranmaunhan.service.TripService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -48,11 +49,14 @@ public class TripServiceImpl implements TripService {
     private final RouteStopRepository routeStopRepository;
     private final RouteSegmentPriceRepository routeSegmentPriceRepository;
     private final ObjectMapper objectMapper;
+    private final ExpiredBookingCleanupService expiredBookingCleanupService;
 
     @Override
     @Transactional(readOnly = true)
     public List<TripSearchResponse> searchTrips(Integer pickupLocationId, Integer dropoffLocationId,
             LocalDate departureDate) {
+        expiredBookingCleanupService.cleanupExpiredPendingBookings();
+
         if (pickupLocationId.equals(dropoffLocationId)) {
             throw new IllegalArgumentException("Diem don va diem tra khong duoc giong nhau");
         }
@@ -156,6 +160,8 @@ public class TripServiceImpl implements TripService {
     @Override
     @Transactional(readOnly = true)
     public TripDetailsResponse getTripDetails(Integer tripId) {
+        expiredBookingCleanupService.cleanupExpiredPendingBookings();
+
         TripRepository.TripDetailsProjection tripDetails = tripRepository.findTripDetails(tripId)
                 .orElseThrow(() -> new NoSuchElementException("Khong tim thay chi tiet chuyen xe voi id = " + tripId));
 
@@ -180,6 +186,8 @@ public class TripServiceImpl implements TripService {
     @Override
     @Transactional(readOnly = true)
     public TripSeatMapResponse getTripSeatMap(Integer tripId, Integer pickupLocationId, Integer dropoffLocationId) {
+        expiredBookingCleanupService.cleanupExpiredPendingBookings();
+
         Trips trip = tripRepository.findById(tripId)
                 .orElseThrow(() -> new NoSuchElementException("Khong tim thay chuyen xe voi id = " + tripId));
 
