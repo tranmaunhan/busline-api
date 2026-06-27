@@ -8,6 +8,7 @@ public record AdminRouteDetailResponse(
         String route,
         Double distanceKm,
         Integer estimatedDurationMinutes,
+        boolean canMutate,
         List<StopItem> stops,
         List<SegmentPriceItem> segmentPrices
 ) {

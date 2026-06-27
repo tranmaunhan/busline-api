@@ -685,7 +685,8 @@ public class AdminServiceImpl implements AdminService {
                             route.getEstimatedDurationMinutes(),
                             tripCount / 7D,
                             revenue.divide(BigDecimal.valueOf(7L), 0, RoundingMode.HALF_UP),
-                            occupancy
+                            occupancy,
+                            canMutateRoute(route.getRouteId())
                     );
                 })
                 .toList();
@@ -971,6 +972,10 @@ public class AdminServiceImpl implements AdminService {
         }
     }
 
+    private boolean canMutateRoute(Integer routeId) {
+        return !tripScheduleRepository.existsByRouteId(routeId) && !tripRepository.existsByRouteId(routeId);
+    }
+
     private void ensureVehicleLicensePlateAvailable(String licensePlate, Integer currentVehicleId) {
         boolean exists = currentVehicleId == null
                 ? vehicleRepository.existsByLicensePlateIgnoreCase(licensePlate)
@@ -1204,6 +1209,7 @@ public class AdminServiceImpl implements AdminService {
                 buildRouteName(route.getOrigin().getName(), route.getDestination().getName()),
                 route.getDistanceKm(),
                 route.getEstimatedDurationMinutes(),
+                canMutateRoute(route.getId()),
                 stopItems,
                 priceItems
         );

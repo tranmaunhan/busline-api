@@ -14,7 +14,8 @@ public record AdminRoutesResponse(
             Integer estimatedDurationMinutes,
             double averageTripsPerDay,
             BigDecimal averageRevenuePerDay,
-            double occupancyRate
+            double occupancyRate,
+            boolean canMutate
     ) {
     }
 
