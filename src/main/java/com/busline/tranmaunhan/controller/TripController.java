@@ -1,5 +1,6 @@
 package com.busline.tranmaunhan.controller;
 
+import com.busline.tranmaunhan.dto.trip.PopularRouteResponse;
 import com.busline.tranmaunhan.dto.trip.TripDetailsResponse;
 import com.busline.tranmaunhan.dto.trip.TripSearchResponse;
 import com.busline.tranmaunhan.dto.trip.TripSeatMapResponse;
@@ -26,40 +27,49 @@ import java.util.List;
 @Validated
 @RequestMapping("/api/trips")
 @RequiredArgsConstructor
-@Tag(name = "Trips", description = "Tìm chuyến xe theo điểm đon, điểm trả và ngày đi")
+@Tag(name = "Trips", description = "Tim chuyen xe theo diem don, diem tra va ngay di")
 public class TripController {
 
-        private final TripService tripService;
+    private final TripService tripService;
 
-        @GetMapping("/search")
-        @Operation(summary = "Tìm chuyến xe theo ngày", description = "Tra ve danh sach chuyen xe theo diem don, diem tra va ngay khoi hanh, kem gia theo chang da chon")
-        @ApiResponse(responseCode = "200", description = "Tìm chuyến xe thành công")
-        @ApiResponse(responseCode = "400", description = "Tham số tìm kiếm không hợp lệ")
-        public ResponseEntity<List<TripSearchResponse>> searchTrips(
-                        @RequestParam @NotNull @Positive Integer pickupLocationId,
-                        @RequestParam @NotNull @Positive Integer dropoffLocationId,
-                        @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate departureDate) {
-                return ResponseEntity.ok(tripService.searchTrips(pickupLocationId, dropoffLocationId, departureDate));
-        }
+    @GetMapping("/search")
+    @Operation(summary = "Tim chuyen xe theo ngay", description = "Tra ve danh sach chuyen xe theo diem don, diem tra va ngay khoi hanh, kem gia theo chang da chon")
+    @ApiResponse(responseCode = "200", description = "Tim chuyen xe thanh cong")
+    @ApiResponse(responseCode = "400", description = "Tham so tim kiem khong hop le")
+    public ResponseEntity<List<TripSearchResponse>> searchTrips(
+            @RequestParam @NotNull @Positive Integer pickupLocationId,
+            @RequestParam @NotNull @Positive Integer dropoffLocationId,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate departureDate) {
+        return ResponseEntity.ok(tripService.searchTrips(pickupLocationId, dropoffLocationId, departureDate));
+    }
 
-        @GetMapping("/{tripId}/details")
-        @Operation(summary = "Lấy chi tiết chuyến xe", description = "Trả về thông tin chi tiết, danh sách điểm dừng và sơ đồ ghế của chuyến xe")
-        @ApiResponse(responseCode = "200", description = "Lấy chi tiết chuyến xe thành công")
-        @ApiResponse(responseCode = "400", description = "Trip id không hợp lệ")
-        @ApiResponse(responseCode = "404", description = "Không tìm thấy chi tiết chuyến xe")
-        public ResponseEntity<TripDetailsResponse> getTripDetails(@PathVariable @Positive Integer tripId) {
-                return ResponseEntity.ok(tripService.getTripDetails(tripId));
-        }
+    @GetMapping("/popular-routes")
+    @Operation(summary = "Lay cac tuyen duoc quan tam nhieu", description = "Tra ve danh sach tuyen dang hoat dong de hien thi o trang chu")
+    @ApiResponse(responseCode = "200", description = "Lay danh sach tuyen noi bat thanh cong")
+    @ApiResponse(responseCode = "400", description = "Gia tri limit khong hop le")
+    public ResponseEntity<List<PopularRouteResponse>> getPopularRoutes(
+            @RequestParam(defaultValue = "4") @Positive Integer limit) {
+        return ResponseEntity.ok(tripService.getPopularRoutes(limit));
+    }
 
-        @GetMapping("/{tripId}/seat-map")
-        @Operation(summary = "Lấy sơ đồ chuyến của chuyến xe", description = "Trả về thông tin chuyến xe")
-        @ApiResponse(responseCode = "200", description = "Lấy sơ đồ ghế thành công")
-        @ApiResponse(responseCode = "400", description = "Trip id không hợp lệ")
-        @ApiResponse(responseCode = "404", description = "Không tìm thấy chuyến xe")
-        public ResponseEntity<TripSeatMapResponse> getTripSeatMap(
-                        @PathVariable @Positive Integer tripId,
-                        @RequestParam(required = false) @Positive Integer pickupLocationId,
-                        @RequestParam(required = false) @Positive Integer dropoffLocationId) {
-                return ResponseEntity.ok(tripService.getTripSeatMap(tripId, pickupLocationId, dropoffLocationId));
-        }
+    @GetMapping("/{tripId}/details")
+    @Operation(summary = "Lay chi tiet chuyen xe", description = "Tra ve thong tin chi tiet, danh sach diem dung va so do ghe cua chuyen xe")
+    @ApiResponse(responseCode = "200", description = "Lay chi tiet chuyen xe thanh cong")
+    @ApiResponse(responseCode = "400", description = "Trip id khong hop le")
+    @ApiResponse(responseCode = "404", description = "Khong tim thay chi tiet chuyen xe")
+    public ResponseEntity<TripDetailsResponse> getTripDetails(@PathVariable @Positive Integer tripId) {
+        return ResponseEntity.ok(tripService.getTripDetails(tripId));
+    }
+
+    @GetMapping("/{tripId}/seat-map")
+    @Operation(summary = "Lay so do ghe cua chuyen xe", description = "Tra ve thong tin ghe tren chuyen xe")
+    @ApiResponse(responseCode = "200", description = "Lay so do ghe thanh cong")
+    @ApiResponse(responseCode = "400", description = "Trip id khong hop le")
+    @ApiResponse(responseCode = "404", description = "Khong tim thay chuyen xe")
+    public ResponseEntity<TripSeatMapResponse> getTripSeatMap(
+            @PathVariable @Positive Integer tripId,
+            @RequestParam(required = false) @Positive Integer pickupLocationId,
+            @RequestParam(required = false) @Positive Integer dropoffLocationId) {
+        return ResponseEntity.ok(tripService.getTripSeatMap(tripId, pickupLocationId, dropoffLocationId));
+    }
 }

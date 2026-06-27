@@ -28,6 +28,16 @@ public interface RouteSegmentPriceRepository extends JpaRepository<RouteSegmentP
     );
 
     @Query("""
+            SELECT
+                rsp.route.id AS routeId,
+                MIN(rsp.price) AS minimumPrice
+            FROM RouteSegmentPrices rsp
+            WHERE rsp.route.id IN :routeIds
+            GROUP BY rsp.route.id
+            """)
+    List<RouteMinimumPriceProjection> findMinimumPricesByRouteIds(@Param("routeIds") Collection<Integer> routeIds);
+
+    @Query("""
             SELECT rsp.price
             FROM RouteSegmentPrices rsp
             WHERE rsp.route.id = :routeId
@@ -48,5 +58,11 @@ public interface RouteSegmentPriceRepository extends JpaRepository<RouteSegmentP
         Integer getRouteId();
 
         BigDecimal getPrice();
+    }
+
+    interface RouteMinimumPriceProjection {
+        Integer getRouteId();
+
+        BigDecimal getMinimumPrice();
     }
 }

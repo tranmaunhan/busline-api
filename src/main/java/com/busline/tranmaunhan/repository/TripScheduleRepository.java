@@ -36,4 +36,22 @@ public interface TripScheduleRepository extends JpaRepository<TripSchedules, Int
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate
     );
+
+    @Query("""
+            SELECT
+                ts.route.id AS routeId,
+                COUNT(ts.id) AS scheduleCount
+            FROM TripSchedules ts
+            WHERE ts.status = 1
+              AND ts.startDate <= :serviceDate
+              AND (ts.endDate IS NULL OR ts.endDate >= :serviceDate)
+            GROUP BY ts.route.id
+            """)
+    List<RouteScheduleCountProjection> findActiveScheduleCountsForDate(@Param("serviceDate") LocalDate serviceDate);
+
+    interface RouteScheduleCountProjection {
+        Integer getRouteId();
+
+        Long getScheduleCount();
+    }
 }

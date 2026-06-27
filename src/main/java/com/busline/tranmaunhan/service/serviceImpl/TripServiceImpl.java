@@ -1,20 +1,25 @@
 package com.busline.tranmaunhan.service.serviceImpl;
 
+import com.busline.tranmaunhan.dto.trip.PopularRouteResponse;
 import com.busline.tranmaunhan.dto.trip.TripDetailsResponse;
 import com.busline.tranmaunhan.dto.trip.TripDetailSeatLayoutItemResponse;
 import com.busline.tranmaunhan.dto.trip.TripSeatMapItemResponse;
 import com.busline.tranmaunhan.dto.trip.TripSeatMapResponse;
 import com.busline.tranmaunhan.dto.trip.TripSearchResponse;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.busline.tranmaunhan.entity.Routes;
 import com.busline.tranmaunhan.entity.Trips;
-import com.busline.tranmaunhan.repository.RouteStopRepository;
 import com.busline.tranmaunhan.repository.RouteSegmentPriceRepository;
+import com.busline.tranmaunhan.repository.RouteStopRepository;
+import com.busline.tranmaunhan.repository.RoutesRepository;
+import com.busline.tranmaunhan.repository.TicketRepository;
 import com.busline.tranmaunhan.repository.TripRepository;
+import com.busline.tranmaunhan.repository.TripScheduleRepository;
 import com.busline.tranmaunhan.repository.TripSeatRepository;
 import com.busline.tranmaunhan.service.ExpiredBookingCleanupService;
 import com.busline.tranmaunhan.service.TripService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,6 +44,8 @@ import java.util.stream.Collectors;
 public class TripServiceImpl implements TripService {
 
     private static final ZoneId APP_ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final int DEFAULT_POPULAR_ROUTE_LIMIT = 4;
+    private static final int MAX_POPULAR_ROUTE_LIMIT = 12;
     private static final int SEAT_STATUS_AVAILABLE = 0;
     private static final TypeReference<List<String>> ROUTE_STOPS_TYPE = new TypeReference<>() {
     };
@@ -46,6 +54,9 @@ public class TripServiceImpl implements TripService {
 
     private final TripRepository tripRepository;
     private final TripSeatRepository tripSeatRepository;
+    private final TripScheduleRepository tripScheduleRepository;
+    private final TicketRepository ticketRepository;
+    private final RoutesRepository routesRepository;
     private final RouteStopRepository routeStopRepository;
     private final RouteSegmentPriceRepository routeSegmentPriceRepository;
     private final ObjectMapper objectMapper;
@@ -154,6 +165,74 @@ public class TripServiceImpl implements TripService {
                             price);
                 })
                 .filter(Objects::nonNull)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PopularRouteResponse> getPopularRoutes(Integer limit) {
+        expiredBookingCleanupService.cleanupExpiredPendingBookings();
+
+        int resolvedLimit = Math.max(1, Math.min(limit == null ? DEFAULT_POPULAR_ROUTE_LIMIT : limit, MAX_POPULAR_ROUTE_LIMIT));
+        LocalDate today = LocalDate.now(APP_ZONE_ID);
+        OffsetDateTime recentStart = today.minusDays(29).atStartOfDay(APP_ZONE_ID).toOffsetDateTime();
+        OffsetDateTime recentEnd = today.plusDays(1).atStartOfDay(APP_ZONE_ID).toOffsetDateTime();
+
+        Map<Integer, Long> dailyTripCountByRouteId = tripScheduleRepository.findActiveScheduleCountsForDate(today).stream()
+                .collect(Collectors.toMap(
+                        TripScheduleRepository.RouteScheduleCountProjection::getRouteId,
+                        projection -> projection.getScheduleCount() == null ? 0L : projection.getScheduleCount(),
+                        Long::max,
+                        LinkedHashMap::new
+                ));
+
+        if (dailyTripCountByRouteId.isEmpty()) {
+            return List.of();
+        }
+
+        Set<Integer> routeIds = dailyTripCountByRouteId.keySet();
+        Map<Integer, Long> recentTripCountByRouteId = tripRepository.findAdminTripsByDepartureTimeBetween(recentStart, recentEnd).stream()
+                .filter(trip -> routeIds.contains(trip.getRouteId()))
+                .collect(Collectors.groupingBy(
+                        TripRepository.AdminTripProjection::getRouteId,
+                        Collectors.counting()
+                ));
+
+        Map<Integer, Long> recentTicketCountByRouteId = ticketRepository.findRouteTicketDetailsByDepartureTimeBetween(recentStart, recentEnd).stream()
+                .filter(ticket -> routeIds.contains(ticket.getRouteId()))
+                .collect(Collectors.groupingBy(
+                        TicketRepository.RouteTicketDetailProjection::getRouteId,
+                        Collectors.counting()
+                ));
+
+        Map<Integer, BigDecimal> startingPriceByRouteId = routeSegmentPriceRepository.findMinimumPricesByRouteIds(routeIds).stream()
+                .collect(Collectors.toMap(
+                        RouteSegmentPriceRepository.RouteMinimumPriceProjection::getRouteId,
+                        RouteSegmentPriceRepository.RouteMinimumPriceProjection::getMinimumPrice,
+                        (left, right) -> left,
+                        HashMap::new
+                ));
+
+        return routesRepository.findAllById(routeIds).stream()
+                .filter(route -> dailyTripCountByRouteId.getOrDefault(route.getId(), 0L) > 0)
+                .sorted(
+                        Comparator.<Routes>comparingLong(route -> recentTicketCountByRouteId.getOrDefault(route.getId(), 0L)).reversed()
+                                .thenComparing(Comparator.comparingLong(
+                                        (Routes route) -> recentTripCountByRouteId.getOrDefault(route.getId(), 0L)).reversed())
+                                .thenComparing(Comparator.comparingLong(
+                                        (Routes route) -> dailyTripCountByRouteId.getOrDefault(route.getId(), 0L)).reversed())
+                                .thenComparing(route -> defaultText(route.getOrigin() == null ? null : route.getOrigin().getName()))
+                                .thenComparing(route -> defaultText(route.getDestination() == null ? null : route.getDestination().getName()))
+                )
+                .limit(resolvedLimit)
+                .map(route -> new PopularRouteResponse(
+                        route.getId(),
+                        defaultText(route.getOrigin() == null ? null : route.getOrigin().getName()),
+                        defaultText(route.getDestination() == null ? null : route.getDestination().getName()),
+                        route.getEstimatedDurationMinutes(),
+                        startingPriceByRouteId.get(route.getId()),
+                        dailyTripCountByRouteId.getOrDefault(route.getId(), 0L)
+                ))
                 .toList();
     }
 
@@ -269,6 +348,10 @@ public class TripServiceImpl implements TripService {
 
     private int safeMinutes(Integer value) {
         return value == null ? 0 : Math.max(value, 0);
+    }
+
+    private String defaultText(String value) {
+        return value == null ? "" : value;
     }
 
     private record RouteStopTiming(

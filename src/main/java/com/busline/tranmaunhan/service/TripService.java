@@ -1,5 +1,6 @@
 package com.busline.tranmaunhan.service;
 
+import com.busline.tranmaunhan.dto.trip.PopularRouteResponse;
 import com.busline.tranmaunhan.dto.trip.TripDetailsResponse;
 import com.busline.tranmaunhan.dto.trip.TripSeatMapResponse;
 import com.busline.tranmaunhan.dto.trip.TripSearchResponse;
@@ -10,6 +11,8 @@ import java.util.List;
 public interface TripService {
 
     List<TripSearchResponse> searchTrips(Integer pickupLocationId, Integer dropoffLocationId, LocalDate departureDate);
+
+    List<PopularRouteResponse> getPopularRoutes(Integer limit);
 
     TripDetailsResponse getTripDetails(Integer tripId);
 
