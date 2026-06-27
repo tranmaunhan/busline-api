@@ -60,6 +60,24 @@ public interface BookingRepository extends JpaRepository<Bookings, Integer> {
             LEFT JOIN FETCH pickupStop.location
             LEFT JOIN FETCH t.dropoffStop dropoffStop
             LEFT JOIN FETCH dropoffStop.location
+            WHERE b.id = :bookingId
+            """)
+    Optional<Bookings> findByIdWithDetails(@Param("bookingId") Integer bookingId);
+
+    @Query("""
+            SELECT DISTINCT b FROM Bookings b
+            LEFT JOIN FETCH b.user u
+            LEFT JOIN FETCH b.tickets t
+            LEFT JOIN FETCH t.trip trip
+            LEFT JOIN FETCH trip.route route
+            LEFT JOIN FETCH route.origin
+            LEFT JOIN FETCH route.destination
+            LEFT JOIN FETCH t.tripSeat ts
+            LEFT JOIN FETCH ts.seatTemplate
+            LEFT JOIN FETCH t.pickupStop pickupStop
+            LEFT JOIN FETCH pickupStop.location
+            LEFT JOIN FETCH t.dropoffStop dropoffStop
+            LEFT JOIN FETCH dropoffStop.location
             WHERE UPPER(b.bookingCode) = UPPER(:bookingCode)
               AND b.contactPhone = :phone
             """)

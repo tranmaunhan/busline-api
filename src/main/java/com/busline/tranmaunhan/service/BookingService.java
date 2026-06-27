@@ -1,5 +1,6 @@
 package com.busline.tranmaunhan.service;
 
+import com.busline.tranmaunhan.dto.admin.AdminUpdateBookingRequest;
 import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.booking.BookingResponse;
 import com.busline.tranmaunhan.dto.booking.CreateBookingRequest;
@@ -31,4 +32,10 @@ public interface BookingService {
     List<BookingResponse> getBookingsByUserId(Integer userId);
 
     MessageResponse cancelPendingBooking(Integer bookingId, Integer userId);
+
+    BookingResponse getBookingByIdForAdmin(Integer bookingId);
+
+    BookingResponse updatePendingBookingByAdmin(Integer bookingId, AdminUpdateBookingRequest request);
+
+    MessageResponse cancelPendingBookingByAdmin(Integer bookingId);
 }

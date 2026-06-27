@@ -1,5 +1,6 @@
 package com.busline.tranmaunhan.service.serviceImpl;
 
+import com.busline.tranmaunhan.dto.admin.AdminUpdateBookingRequest;
 import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.booking.BookingResponse;
 import com.busline.tranmaunhan.dto.booking.CreateBookingRequest;
@@ -223,18 +224,54 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public BookingResponse getBookingByIdForAdmin(Integer bookingId) {
+        expiredBookingCleanupService.cleanupExpiredPendingBookings();
+
+        Bookings booking = findBookingForAdmin(bookingId);
+        return bookingResponseMapper.toBookingResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse updatePendingBookingByAdmin(Integer bookingId, AdminUpdateBookingRequest request) {
+        Bookings booking = findBookingForAdmin(bookingId);
+        ensurePendingBookingCanBeManaged(booking);
+
+        Trips trip = resolveTripFromBooking(booking);
+        OffsetDateTime paymentExpiry = normalizePaymentExpiry(
+                request.getPaymentExpiry(),
+                trip.getDepartureTime(),
+                OffsetDateTime.now());
+
+        booking.setContactName(normalizeRequiredField(request.getContactName(), "contactName"));
+        booking.setContactPhone(normalizeRequiredField(request.getContactPhone(), "contactPhone"));
+        booking.setContactEmail(normalizeRequiredField(request.getContactEmail(), "contactEmail"));
+        booking.setNote(normalizeOptionalField(request.getNote()));
+        booking.setPaymentExpiry(paymentExpiry);
+
+        Bookings savedBooking = bookingRepository.saveAndFlush(booking);
+        return bookingResponseMapper.toBookingResponse(savedBooking);
+    }
+
+    @Override
     @Transactional
     public MessageResponse cancelPendingBooking(Integer bookingId, Integer userId) {
         Bookings booking = bookingRepository.findByIdAndUserIdWithDetails(bookingId, userId)
                 .orElseThrow(() -> new NoSuchElementException("Khong tim thay booking cua nguoi dung"));
 
-        if (BOOKING_STATUS_CONFIRMED.equals(booking.getStatus())) {
-            throw new IllegalArgumentException("Booking da thanh toan, khong the huy");
-        }
+        return cancelPendingBookingInternal(booking);
+    }
 
-        if (!BOOKING_STATUS_PENDING.equals(booking.getStatus())) {
-            throw new IllegalArgumentException("Booking khong o trang thai cho thanh toan de huy");
-        }
+    @Override
+    @Transactional
+    public MessageResponse cancelPendingBookingByAdmin(Integer bookingId) {
+        Bookings booking = findBookingForAdmin(bookingId);
+        return cancelPendingBookingInternal(booking);
+    }
+
+    private MessageResponse cancelPendingBookingInternal(Bookings booking) {
+        ensurePendingBookingCanBeManaged(booking);
 
         if (booking.getTickets() == null || booking.getTickets().isEmpty()) {
             throw new IllegalStateException("Booking khong co ticket de huy");
@@ -253,6 +290,34 @@ public class BookingServiceImpl implements BookingService {
         bookingRepository.delete(booking);
 
         return new MessageResponse("Huy booking thanh cong");
+    }
+
+    private Bookings findBookingForAdmin(Integer bookingId) {
+        return bookingRepository.findByIdWithDetails(bookingId)
+                .orElseThrow(() -> new NoSuchElementException("Khong tim thay booking voi id = " + bookingId));
+    }
+
+    private Trips resolveTripFromBooking(Bookings booking) {
+        if (booking.getTickets() == null || booking.getTickets().isEmpty()) {
+            throw new IllegalStateException("Booking khong co ticket hop le");
+        }
+
+        Trips trip = booking.getTickets().getFirst().getTrip();
+        if (trip == null) {
+            throw new IllegalStateException("Booking khong gan voi chuyen xe hop le");
+        }
+
+        return trip;
+    }
+
+    private void ensurePendingBookingCanBeManaged(Bookings booking) {
+        if (BOOKING_STATUS_CONFIRMED.equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Booking da thanh toan, khong the chinh sua hoac huy");
+        }
+
+        if (!BOOKING_STATUS_PENDING.equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Booking khong o trang thai cho thanh toan de thuc hien thao tac");
+        }
     }
 
     private Users resolveBookingUser(Integer userId) {

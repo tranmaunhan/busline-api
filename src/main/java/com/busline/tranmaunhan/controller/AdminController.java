@@ -12,6 +12,7 @@ import com.busline.tranmaunhan.dto.admin.AdminScheduleResponse;
 import com.busline.tranmaunhan.dto.admin.AdminStaffResponse;
 import com.busline.tranmaunhan.dto.admin.AdminTripBookingSeatMapResponse;
 import com.busline.tranmaunhan.dto.admin.AdminTripScheduleResponse;
+import com.busline.tranmaunhan.dto.admin.AdminUpdateBookingRequest;
 import com.busline.tranmaunhan.dto.admin.AdminUpdateVehicleStatusRequest;
 import com.busline.tranmaunhan.dto.admin.AdminUpsertVehicleRequest;
 import com.busline.tranmaunhan.dto.auth.MessageResponse;
@@ -103,6 +104,35 @@ public class AdminController {
             @Valid @RequestBody CreateBookingRequest request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(bookingService.createBooking(request, null));
+    }
+
+    @GetMapping("/bookings/{bookingId}")
+    @Operation(summary = "Lay chi tiet booking cho admin", description = "Lay day du thong tin booking de nhan vien doi soat, sua lien he hoac huy don cho thanh toan")
+    @ApiResponse(responseCode = "200", description = "Lay chi tiet booking thanh cong")
+    @ApiResponse(responseCode = "404", description = "Khong tim thay booking")
+    public ResponseEntity<BookingResponse> getBookingDetail(@PathVariable @Positive Integer bookingId) {
+        return ResponseEntity.ok(bookingService.getBookingByIdForAdmin(bookingId));
+    }
+
+    @PutMapping("/bookings/{bookingId}")
+    @Operation(summary = "Admin sua booking chua thanh toan", description = "Cho phep cap nhat thong tin lien he, ghi chu va han thanh toan cua booking pending")
+    @ApiResponse(responseCode = "200", description = "Cap nhat booking thanh cong")
+    @ApiResponse(responseCode = "400", description = "Booking da thanh toan hoac du lieu khong hop le")
+    @ApiResponse(responseCode = "404", description = "Khong tim thay booking")
+    public ResponseEntity<BookingResponse> updatePendingBooking(
+            @PathVariable @Positive Integer bookingId,
+            @Valid @RequestBody AdminUpdateBookingRequest request
+    ) {
+        return ResponseEntity.ok(bookingService.updatePendingBookingByAdmin(bookingId, request));
+    }
+
+    @DeleteMapping("/bookings/{bookingId}")
+    @Operation(summary = "Admin huy booking chua thanh toan", description = "Cho phep nhan vien huy booking pending neu khong lien lac duoc voi khach hoac khach yeu cau huy")
+    @ApiResponse(responseCode = "200", description = "Huy booking thanh cong")
+    @ApiResponse(responseCode = "400", description = "Booking da thanh toan hoac khong o trang thai cho thanh toan")
+    @ApiResponse(responseCode = "404", description = "Khong tim thay booking")
+    public ResponseEntity<MessageResponse> cancelPendingBookingByAdmin(@PathVariable @Positive Integer bookingId) {
+        return ResponseEntity.ok(bookingService.cancelPendingBookingByAdmin(bookingId));
     }
 
     @GetMapping("/trip-schedules")
