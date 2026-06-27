@@ -39,7 +39,6 @@ public class BookingServiceImpl implements BookingService {
     private static final Integer BOOKING_STATUS_CONFIRMED = 1;
     private static final Integer SEAT_STATUS_AVAILABLE = 0;
     private static final Integer SEAT_STATUS_LOCKED = 1;
-    private static final int DEFAULT_PAYMENT_HOLD_HOURS = 24;
 
     private final UsersRepository usersRepository;
     private final TripRepository tripRepository;
@@ -286,10 +285,14 @@ public class BookingServiceImpl implements BookingService {
             OffsetDateTime tripDepartureTime,
             OffsetDateTime bookingTime
     ) {
-        OffsetDateTime fallbackPaymentExpiry = bookingTime.plusHours(DEFAULT_PAYMENT_HOLD_HOURS);
+        OffsetDateTime fallbackPaymentExpiry = tripDepartureTime;
         OffsetDateTime normalizedPaymentExpiry = requestedPaymentExpiry == null
                 ? fallbackPaymentExpiry
                 : requestedPaymentExpiry;
+
+        if (normalizedPaymentExpiry == null) {
+            throw new IllegalArgumentException("Khong xac dinh duoc paymentExpiry mac dinh cho booking");
+        }
 
         if (!normalizedPaymentExpiry.isAfter(bookingTime)) {
             throw new IllegalArgumentException("paymentExpiry phai lon hon thoi diem dat ve");
