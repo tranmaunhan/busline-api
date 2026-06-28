@@ -7,6 +7,7 @@ import com.busline.tranmaunhan.dto.auth.GoogleAuthRequest;
 import com.busline.tranmaunhan.dto.auth.LoginRequest;
 import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.auth.RegisterRequest;
+import com.busline.tranmaunhan.dto.auth.UpdateProfileRequest;
 import com.busline.tranmaunhan.dto.auth.UserProfileResponse;
 import com.busline.tranmaunhan.security.CustomUserDetails;
 
@@ -25,6 +26,8 @@ public interface AuthService {
     UserProfileResponse getCurrentUserProfile(CustomUserDetails currentUser);
 
     UserProfileResponse getCurrentAdminProfile(CustomUserDetails currentUser);
+
+    AuthResponse updateCurrentUserProfile(UpdateProfileRequest request, Integer userId);
 
     MessageResponse changePassword(ChangePasswordRequest request, Integer userId);
 }

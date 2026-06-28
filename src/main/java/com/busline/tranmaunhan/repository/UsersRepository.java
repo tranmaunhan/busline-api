@@ -14,6 +14,8 @@ public interface UsersRepository extends JpaRepository<Users, Integer> {
 
     boolean existsByEmailIgnoreCase(String email);
 
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, Integer id);
+
     @EntityGraph(attributePaths = {"userRoles", "userRoles.role"})
     List<Users> findAllByOrderByCreatedAtDesc();
 }

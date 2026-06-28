@@ -8,6 +8,7 @@ import com.busline.tranmaunhan.dto.auth.GoogleAuthRequest;
 import com.busline.tranmaunhan.dto.auth.LoginRequest;
 import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.auth.RegisterRequest;
+import com.busline.tranmaunhan.dto.auth.UpdateProfileRequest;
 import com.busline.tranmaunhan.dto.auth.UserProfileResponse;
 import com.busline.tranmaunhan.entity.Roles;
 import com.busline.tranmaunhan.entity.UserRoles;
@@ -157,6 +158,29 @@ public class AuthServiceImpl implements AuthService {
     public UserProfileResponse getCurrentAdminProfile(CustomUserDetails currentUser) {
         ensureAdminAccess(currentUser);
         return toUserProfile(currentUser);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse updateCurrentUserProfile(UpdateProfileRequest request, Integer userId) {
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("Khong tim thay thong tin nguoi dung"));
+
+        String fullName = normalizeRequiredValue(request.fullName(), "Ho ten khong duoc de trong");
+        String email = normalizeRequiredValue(request.email(), "Email khong duoc de trong");
+        String phone = normalizeRequiredValue(request.phone(), "So dien thoai khong duoc de trong");
+
+        if (usersRepository.existsByEmailIgnoreCaseAndIdNot(email, userId)) {
+            throw new IllegalArgumentException("Email da duoc su dung boi tai khoan khac");
+        }
+
+        user.setFullName(fullName);
+        user.setEmail(email);
+        user.setPhone(phone);
+        user.setUpdatedAt(OffsetDateTime.now());
+
+        Users savedUser = usersRepository.save(user);
+        return buildAuthResponse(new CustomUserDetails(savedUser));
     }
 
     @Override

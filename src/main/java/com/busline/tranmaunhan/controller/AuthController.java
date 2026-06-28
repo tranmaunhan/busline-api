@@ -7,6 +7,7 @@ import com.busline.tranmaunhan.dto.auth.GoogleAuthRequest;
 import com.busline.tranmaunhan.dto.auth.LoginRequest;
 import com.busline.tranmaunhan.dto.auth.MessageResponse;
 import com.busline.tranmaunhan.dto.auth.RegisterRequest;
+import com.busline.tranmaunhan.dto.auth.UpdateProfileRequest;
 import com.busline.tranmaunhan.dto.auth.UserProfileResponse;
 import com.busline.tranmaunhan.security.CustomUserDetails;
 import com.busline.tranmaunhan.service.AuthService;
@@ -23,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -76,6 +78,21 @@ public class AuthController {
     @ApiResponse(responseCode = "401", description = "Chua dang nhap", content = @Content(schema = @Schema()))
     public ResponseEntity<UserProfileResponse> me(@AuthenticationPrincipal CustomUserDetails currentUser) {
         return ResponseEntity.ok(authService.getCurrentUserProfile(currentUser));
+    }
+
+    @PutMapping("/profile")
+    @Operation(
+            summary = "Cap nhat thong tin tai khoan",
+            description = "Cho phep user dang dang nhap cap nhat ho ten, email va so dien thoai",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponse(responseCode = "200", description = "Cap nhat thong tin thanh cong")
+    @ApiResponse(responseCode = "400", description = "Du lieu cap nhat khong hop le", content = @Content(schema = @Schema()))
+    @ApiResponse(responseCode = "401", description = "Chua dang nhap", content = @Content(schema = @Schema()))
+    public ResponseEntity<AuthResponse> updateProfile(
+            @Valid @RequestBody UpdateProfileRequest request,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        return ResponseEntity.ok(authService.updateCurrentUserProfile(request, currentUser.getId()));
     }
 
     @PostMapping("/change-password")
